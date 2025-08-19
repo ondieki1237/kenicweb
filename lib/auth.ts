@@ -1,11 +1,10 @@
 export interface User {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string; // Changed from firstName/lastName to match backend
   email: string;
-  phone?: string;
-  role?: string;
-  company?: string;
+  phone?: string; // Optional, if added to backend schema
+  role?: "user" | "admin"; // Match backend schema
+  company?: string; // Optional, if added to backend schema
   token: string;
 }
 
@@ -15,12 +14,13 @@ export interface LoginCredentials {
 }
 
 export interface SignupData {
-  firstName: string;
-  lastName: string;
+  firstName: string; // Keep for form compatibility
+  lastName: string; // Keep for form compatibility
+  username: string; // Added to match backend
   email: string;
-  phone: string;
+  phone?: string; // Changed to optional to match form
   password: string;
-  role: string;
+  role: "user" | "admin"; // Restrict to backend values
   company?: string;
 }
 
@@ -48,14 +48,20 @@ export async function loginUser(credentials: LoginCredentials): Promise<User> {
   };
 }
 
-// Register function (renamed from signupUser)
+// Register function
 export async function registerUser(userData: SignupData): Promise<User> {
   const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(userData),
+    body: JSON.stringify({
+      name: `${userData.firstName} ${userData.lastName}`, // Combine firstName and lastName
+      username: userData.username,
+      email: userData.email,
+      password: userData.password,
+      role: userData.role,
+    }), // Send only what backend expects
   });
 
   if (!response.ok) {
@@ -70,7 +76,7 @@ export async function registerUser(userData: SignupData): Promise<User> {
   };
 }
 
-// Verify token function
+// Verify token function (requires backend endpoint)
 export async function verifyToken(token: string): Promise<User> {
   const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
     method: "GET",
@@ -91,8 +97,10 @@ export async function verifyToken(token: string): Promise<User> {
   };
 }
 
-// Logout function
+// Logout function (client-side only, unless backend endpoint is added)
 export async function logoutUser(token: string): Promise<void> {
+  // If no backend logout endpoint, just clear client-side token
+  // localStorage.removeItem("token"); // Uncomment if using localStorage
   await fetch(`${API_BASE_URL}/api/auth/logout`, {
     method: "POST",
     headers: {

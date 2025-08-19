@@ -1,114 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Search,
-  Shield,
-  AlertTriangle,
-  CheckCircle,
-  X,
-  Lightbulb,
-  Globe,
-  Eye,
-  ShoppingCart,
-  Zap,
-} from "lucide-react";
-import PaymentCheckout from "./payment-checkout";
-import { domainApi } from "@/lib/api";
-import { useAuth } from "@/contexts/auth-context";
+import React, { useState } from "react";
+import api from "@/lib/axios";
 
-interface DomainResult {
-  name: string;
-  extension: string;
-  available: boolean;
-  price: number;
+// Define interfaces matching the provided code
+interface Pricing {
   registrar: string;
-  trademarkConflict?: boolean;
-  similarDomains?: string[];
-  aiSuggestion?: boolean;
+  registrarId: string;
+  website: string;
+  phone: string;
+  email: string;
+  price: number;
+  currency: string;
+  rating: number;
+  reviews: number;
+  features: string[];
+  registerUrl: string;
 }
 
+interface DomainResult {
+  domain: string;
+  available: boolean;
+  whoisData: null | any;
+  pricing: Pricing[];
+  bestPrice: Pricing;
+}
+
+interface ApiResponse {
+  success: boolean;
+  businessDescription?: string;
+  count: number;
+  suggestions: DomainResult[];
+}
+
+const API_BASE_URL = "http://localhost:5000/api/domains";
+
 export default function DomainSearch() {
-  const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedExtensions, setSelectedExtensions] = useState([".co.ke"]);
+  const [businessDescription, setBusinessDescription] = useState<string>("We sell fresh farm produce");
   const [searchResults, setSearchResults] = useState<DomainResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
-  const [whoisData, setWhoisData] = useState<any>(null);
-  const [showWhois, setShowWhois] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [selectedDomain, setSelectedDomain] = useState<DomainResult | null>(null);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [registrars, setRegistrars] = useState<string[]>([]);
-
-  const extensions = [
-    { name: ".co.ke", price: 1200, description: "Commercial entities" },
-    { name: ".or.ke", price: 1000, description: "Organizations" },
-    { name: ".ne.ke", price: 1000, description: "Network providers" },
-    { name: ".go.ke", price: 1500, description: "Government entities" },
-    { name: ".me.ke", price: 1200, description: "Personal websites" },
-    { name: ".mobi.ke", price: 1300, description: "Mobile websites" },
-    { name: ".info.ke", price: 1100, description: "Information sites" },
-    { name: ".sc.ke", price: 1400, description: "Schools" },
-    { name: ".ac.ke", price: 1500, description: "Academic institutions" },
-  ];
-
-  useEffect(() => {
-    const fetchRegistrars = async () => {
-      if (!user) return;
-      try {
-        const response = await domainApi.getRegistrars();
-        setRegistrars(response.registrars?.map((r: any) => r.name) || ["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]);
-      } catch (error) {
-        console.error("Failed to fetch registrars:", error);
-        setRegistrars(["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]);
-      }
-    };
-    fetchRegistrars();
-  }, [user]);
-
-  const generateAISuggestions = async (query: string) => {
-    if (!query || !user) return [];
-    try {
-      const response = await domainApi.getAISuggestions(query, 4);
-      return response.suggestions?.map((s: any) => s.domain.replace(/\.(co\.)?ke$/, '')) || [];
-    } catch (error: any) {
-      console.error("Failed to get AI suggestions:", error);
-      setError(error.message || "Failed to fetch AI suggestions");
-      return [`${query}kenya`, `${query}hub`, `${query}pro`, `my${query}`].slice(0, 4);
-    }
-  };
-
-  const checkTrademarkConflict = (domain: string): boolean => {
-    const conflictKeywords = ["safaricom", "equity", "kcb", "mpesa", "kenya", "government"];
-    return conflictKeywords.some((keyword) => domain.toLowerCase().includes(keyword));
-  };
-
-  const detectSimilarDomains = (domain: string): string[] => {
-    const popularDomains = ["safaricom.co.ke", "equity.co.ke", "kcb.co.ke", "kenya.go.ke"];
-    const similar = [];
-    for (const popular of popularDomains) {
-      const popularName = popular.split(".")[0];
-      if (domain.includes(popularName) || popularName.includes(domain)) {
-        similar.push(popular);
-      }
-    }
-    return similar;
-  };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setError("Please enter a domain name to search");
-      return;
-    }
-    if (!user) {
-      setError("Please log in to search domains");
+    if (!businessDescription.trim()) {
+      setError("Please enter a business description");
       return;
     }
 
@@ -117,390 +52,522 @@ export default function DomainSearch() {
     setError(null);
 
     try {
-      const suggestions = await generateAISuggestions(searchQuery);
-      setAiSuggestions(suggestions);
+      const token = localStorage.getItem("token"); // Or get from context/provider
+      const response = await api.post<ApiResponse>(
+        "/domains/ai-suggestions",
+        { businessDescription }
+      );
 
-      const domainsToCheck = selectedExtensions.map((ext) => `${searchQuery}${ext}`);
-      const response = await domainApi.bulkCheck(domainsToCheck);
-
-      if (!response.results || !Array.isArray(response.results)) {
-        throw new Error("Invalid API response: results not found");
+      if (!response.data.success) {
+        setError("No suggestions found.");
+        return;
       }
 
-      const results: DomainResult[] = response.results.map((result: any) => {
-        const extension = selectedExtensions.find((ext) => result.domain.endsWith(ext)) || ".co.ke";
-        const extensionInfo = extensions.find((e) => e.name === extension);
-        const trademarkConflict = checkTrademarkConflict(searchQuery);
-        const similarDomains = detectSimilarDomains(searchQuery);
-
-        return {
-          name: searchQuery,
-          extension,
-          available: result.available ?? false,
-          price: result.bestPrice?.price ?? extensionInfo?.price ?? 1200,
-          registrar: result.bestPrice?.registrar ?? registrars[0] ?? "KeNIC",
-          trademarkConflict,
-          similarDomains: similarDomains.length > 0 ? similarDomains : undefined,
-        };
-      });
+      // Clean domain names by removing numbering prefix
+      const results = response.data.suggestions.map((suggestion) => ({
+        ...suggestion,
+        domain: suggestion.domain.replace(/^\d+\.\s+/, ""),
+      }));
 
       setSearchResults(results);
     } catch (error: any) {
       console.error("Domain search failed:", error);
-      const message =
-        error.message?.includes("401") || error.message?.includes("Unauthorized")
-          ? "Unauthorized: Please log in again"
-          : error.message?.includes("429") || error.message?.includes("rate limit")
-          ? "Rate limit exceeded. Please try again later."
-          : error.message || "Failed to search domains. Please try again.";
-      setError(message);
+      setError(error.message || "Failed to search domains. Please try again.");
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleWhoisLookup = async (domain: string) => {
-    if (!user) {
-      setError("Please log in to view WHOIS information");
-      return;
-    }
-
-    try {
-      setShowWhois(true);
-      const response = await domainApi.getWhois(domain);
-      setWhoisData(response.whoisData || response);
-    } catch (error: any) {
-      console.error("WHOIS lookup failed:", error);
-      const message =
-        error.message?.includes("401") || error.message?.includes("Unauthorized")
-          ? "Unauthorized: Please log in again"
-          : error.message || "Failed to get WHOIS information";
-      setError(message);
-      setShowWhois(false);
-    }
-  };
-
-  const handleRegisterDomain = (domain: DomainResult) => {
-    if (!user) {
-      setError("Please log in to register domains");
-      return;
-    }
-    if (user.role !== "registrar" && user.role !== "admin") {
-      setError("Only users with 'registrar' or 'admin' roles can register domains");
-      return;
-    }
-    setSelectedDomain(domain);
-    setShowCheckout(true);
-  };
-
-  const toggleExtension = (ext: string) => {
-    setSelectedExtensions((prev) =>
-      prev.includes(ext) ? prev.filter((e) => e !== ext) : [...prev, ext]
-    );
-  };
-
-  if (showCheckout && selectedDomain) {
-    return (
-      <PaymentCheckout
-        domain={`${selectedDomain.name}${selectedDomain.extension}`}
-        amount={selectedDomain.price}
-        type="registration"
-        onSuccess={() => {
-          setShowCheckout(false);
-          setSelectedDomain(null);
-        }}
-        onCancel={() => {
-          setShowCheckout(false);
-          setSelectedDomain(null);
-        }}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <div
+      style={{
+        maxWidth: "800px",
+        margin: "0 auto",
+        padding: "24px",
+        fontFamily: "Arial, sans-serif",
+        display: "flex",
+        flexDirection: "column",
+        gap: "24px",
+      }}
+    >
+      {/* Error Alert */}
       {error && (
-        <Alert className="bg-red-50 border-red-200">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {!user && (
-        <Alert className="bg-blue-50 border-blue-200">
-          <Shield className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong>Login Required:</strong> Please log in to search and register domains.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {user && user.role !== "registrar" && user.role !== "admin" && (
-        <Alert className="bg-yellow-50 border-yellow-200">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            <strong>Role Restriction:</strong> Only users with "registrar" or "admin" roles can register domains. Your
-            role is "{user.role || "user"}". Contact support to upgrade your account.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Search className="mr-2 h-5 w-5" />
-            AI-Powered Domain Search
-          </CardTitle>
-          <CardDescription>
-            Find the perfect .KE domain with intelligent suggestions and comprehensive protection
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Enter your domain name (e.g., mybusiness)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 text-lg"
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-              disabled={!user}
+        <div
+          style={{
+            backgroundColor: "#fef2f2",
+            border: "1px solid #fecaca",
+            padding: "12px",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <svg
+            style={{ width: "16px", height: "16px", color: "#dc2626" }}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
-            <Button
-              onClick={handleSearch}
-              disabled={!searchQuery.trim() || isSearching || !user}
-              className="bg-gradient-to-r from-primary to-blue-600 px-8"
+          </svg>
+          <span style={{ color: "#991b1b" }}>{error}</span>
+        </div>
+      )}
+
+      {/* Search Interface */}
+      <div
+        style={{
+          backgroundColor: "white",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px 24px",
+            borderBottom: "1px solid #e5e7eb",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "20px",
+              fontWeight: "600",
+              color: "#111827",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <svg
+              style={{ width: "20px", height: "20px", color: "#6b7280" }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              {isSearching ? (
-                <>
-                  <Zap className="h-4 w-4 mr-2 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </>
-              )}
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-medium">Select .KE Extensions</h4>
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-              {extensions.map((ext) => (
-                <Button
-                  key={ext.name}
-                  variant={selectedExtensions.includes(ext.name) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleExtension(ext.name)}
-                  className="justify-start"
-                  disabled={!user}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            AI-Powered Domain Search
+          </h2>
+          <p
+            style={{
+              color: "#6b7280",
+              fontSize: "14px",
+              marginTop: "4px",
+            }}
+          >
+            Find the perfect .KE domain based on your business description
+          </p>
+        </div>
+        <div
+          style={{
+            padding: "24px",
+            display: "flex",
+            gap: "8px",
+          }}
+        >
+          <input
+            type="text"
+            placeholder="Enter your business description (e.g., We sell fresh farm produce)"
+            value={businessDescription}
+            onChange={(e) => setBusinessDescription(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            style={{
+              flex: 1,
+              padding: "12px",
+              fontSize: "16px",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              outline: "none",
+              transition: "border-color 0.2s",
+            }}
+            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+          />
+          <button
+            onClick={handleSearch}
+            disabled={!businessDescription.trim() || isSearching}
+            style={{
+              padding: "12px 24px",
+              fontSize: "16px",
+              background: isSearching
+                ? "#9ca3af"
+                : "linear-gradient(to right, #3b82f6, #2563eb)",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: !businessDescription.trim() || isSearching ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "background 0.2s",
+            }}
+            onMouseOver={(e) => {
+              if (!isSearching && businessDescription.trim()) {
+                e.currentTarget.style.background = "linear-gradient(to right, #2563eb, #1d4ed8)";
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isSearching && businessDescription.trim()) {
+                e.currentTarget.style.background = "linear-gradient(to right, #3b82f6, #2563eb)";
+              }
+            }}
+          >
+            {isSearching ? (
+              <>
+                <svg
+                  style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite" }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  {ext.name}
-                  <span className="ml-1 text-xs">KSh {ext.price}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <Alert className="bg-blue-50 border-blue-200">
-            <Shield className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
-              <strong>KIPI Protection Active:</strong> All searches automatically check for trademark conflicts through
-              the Kenya Industrial Property Institute database.
-            </AlertDescription>
-          </Alert>
-
-          {registrars.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Available Registrars</h4>
-              <div className="flex flex-wrap gap-2">
-                {registrars.map((registrar) => (
-                  <Badge key={registrar} variant="secondary">
-                    {registrar}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {aiSuggestions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-lg">
-              <Lightbulb className="mr-2 h-5 w-5 text-yellow-500" />
-              AI-Powered Suggestions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {aiSuggestions.map((suggestion) => (
-                <Button
-                  key={suggestion}
-                  variant="outline"
-                  onClick={() => setSearchQuery(suggestion)}
-                  className="justify-start bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 hover:from-yellow-100 hover:to-orange-100"
-                >
-                  <Lightbulb className="h-3 w-3 mr-2 text-yellow-500" />
-                  {suggestion}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {searchResults.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Search Results</CardTitle>
-            <CardDescription>
-              Found {searchResults.length} results for "{searchQuery}"
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {searchResults.map((result, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold text-lg">
-                          {result.name}
-                          {result.extension}
-                        </h3>
-                        {result.available ? (
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Available
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive">
-                            <X className="h-3 w-3 mr-1" />
-                            Taken
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold">KSh {result.price}/year</span>
-                      {result.available && (
-                        <Button
-                          size="sm"
-)}-webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    white-space: nowrap;
-    width: 1%;                          className="bg-gradient-to-r from-primary to-blue-600"
-                          onClick={() => handleRegisterDomain(result)}
-                          disabled={user?.role !== "registrar" && user?.role !== "admin"}
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-1" />
-                          Register
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleWhoisLookup(`${result.name}${result.extension}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        WHOIS
-                      </Button>
-                    </div>
-                  </div>
-
-                  {result.trademarkConflict && (
-                    <Alert className="bg-red-50 border-red-200">
-                      <AlertTriangle className="h-4 w-4 text-red-600" />
-                      <AlertDescription className="text-red-800">
-                        <strong>Trademark Conflict Detected:</strong> This domain name may conflict with existing
-                        trademarks registered with KIPI. Consider alternative names to avoid legal issues.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {result.similarDomains && result.similarDomains.length > 0 && (
-                    <Alert className="bg-orange-50 border-orange-200">
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
-                      <AlertDescription className="text-orange-800">
-                        <strong>Similar Domain Warning:</strong> This domain is similar to existing domains:{" "}
-                        {result.similarDomains.join(", ")}. This may be considered cybersquatting or typosquatting.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {!result.available && (
-                    <div className="text-sm text-muted-foreground">Registered through: {result.registrar}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {showWhois && whoisData && (
-        <Card className="fixed inset-4 z-50 bg-white shadow-2xl border-2 max-w-2xl mx-auto my-auto h-fit">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center">
-              <Globe className="mr-2 h-5 w-5" />
-              WHOIS Information
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => setShowWhois(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {whoisData.domain ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Domain</h4>
-                  <p className="font-semibold">{whoisData.domain}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Status</h4>
-                  <Badge className="bg-green-100 text-green-800">{whoisData.status || "N/A"}</Badge>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Registrar</h4>
-                  <p>{whoisData.registrar || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Registrant</h4>
-                  <p>{whoisData.registrant || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Registration Date</h4>
-                  <p>{whoisData.registrationDate || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Expiry Date</h4>
-                  <p>{whoisData.expiryDate || "N/A"}</p>
-                </div>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                Searching...
+              </>
             ) : (
-              <p>No WHOIS data available.</p>
+              <>
+                <svg
+                  style={{ width: "16px", height: "16px" }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                Search
+              </>
             )}
-            {whoisData.nameServers && whoisData.nameServers.length > 0 && (
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground mb-2">Name Servers</h4>
-                <div className="space-y-1">
-                  {whoisData.nameServers.map((ns: string, index: number) => (
-                    <p key={index} className="text-sm font-mono bg-gray-50 p-2 rounded">
-                      {ns}
-                    </p>
-                  ))}
+          </button>
+        </div>
+      </div>
+
+      {/* Search Results */}
+      {searchResults.length > 0 && (
+        <div
+          style={{
+            backgroundColor: "white",
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <div
+            style={{
+              padding: "16px 24px",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "20px",
+                fontWeight: "600",
+                color: "#111827",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <svg
+                style={{ width: "20px", height: "20px", color: "#eab308" }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                />
+              </svg>
+              AI-Powered Suggestions
+            </h2>
+            <p
+              style={{
+                color: "#6b7280",
+                fontSize: "14px",
+                marginTop: "4px",
+              }}
+            >
+              Found {searchResults.length} domain suggestions for "{businessDescription}"
+            </p>
+          </div>
+          <div
+            style={{
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            {searchResults.map((result, index) => (
+              <div
+                key={index}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <h3
+                      style={{
+                        fontSize: "18px",
+                        fontWeight: "600",
+                        color: "#111827",
+                      }}
+                    >
+                      {result.domain}
+                    </h3>
+                    <span
+                      style={{
+                        backgroundColor: result.available ? "#dcfce7" : "#fee2e2",
+                        color: result.available ? "#15803d" : "#b91c1c",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        border: result.available ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      {result.available ? (
+                        <>
+                          <svg
+                            style={{ width: "12px", height: "12px" }}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Available
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            style={{ width: "12px", height: "12px" }}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                          Taken
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: "600",
+                        color: "#111827",
+                      }}
+                    >
+                      {result.bestPrice.price} {result.bestPrice.currency}/year
+                    </span>
+                    <a
+                      href={result.bestPrice.registerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        padding: "8px 16px",
+                        fontSize: "14px",
+                        background: "linear-gradient(to right, #3b82f6, #2563eb)",
+                        color: "white",
+                        borderRadius: "6px",
+                        textDecoration: "none",
+                        display: result.available ? "inline-flex" : "none",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "linear-gradient(to right, #2563eb, #1d4ed8)")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "linear-gradient(to right, #3b82f6, #2563eb)")
+                      }
+                    >
+                      <svg
+                        style={{ width: "16px", height: "16px" }}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                      Register
+                    </a>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <h4
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: "#111827",
+                    }}
+                  >
+                    Best Price: {result.bestPrice.registrar}
+                  </h4>
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "#6b7280",
+                    }}
+                  >
+                    Price: {result.bestPrice.price} {result.bestPrice.currency} | Rating: {result.bestPrice.rating} (
+                    {result.bestPrice.reviews} reviews)
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "#6b7280",
+                    }}
+                  >
+                    Features: {result.bestPrice.features.join(", ")}
+                  </p>
+                  <a
+                    href={result.bestPrice.registerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: "14px",
+                      color: "#2563eb",
+                      textDecoration: "none",
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                    onMouseOut={(e) => (e.currentTarget.style.textDecoration = "none")}
+                  >
+                    Register at {result.bestPrice.registrar}
+                  </a>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <h4
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: "#111827",
+                    }}
+                  >
+                    All Pricing Options:
+                  </h4>
+                  <ul
+                    style={{
+                      paddingLeft: "20px",
+                      fontSize: "14px",
+                      color: "#6b7280",
+                      listStyleType: "disc",
+                    }}
+                  >
+                    {result.pricing.map((price) => (
+                      <li key={price.registrarId}>
+                        <strong>{price.registrar}</strong>: {price.price} {price.currency} |{" "}
+                        <a
+                          href={price.registerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: "#2563eb",
+                            textDecoration: "none",
+                          }}
+                          onMouseOver={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                          onMouseOut={(e) => (e.currentTarget.style.textDecoration = "none")}
+                        >
+                          Register
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </div>
       )}
-
-      {showWhois && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowWhois(false)} />}
     </div>
   );
 }
