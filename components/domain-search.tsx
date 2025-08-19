@@ -254,7 +254,7 @@ export default function DomainSearch() {
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
             <strong>Role Restriction:</strong> Only users with "registrar" or "admin" roles can register domains. Your
-            role is "{user.role || "user"}". Contact support to upgrade your account.
+            role is "{user.role || \"user"}". Contact support to upgrade your account.
           </AlertDescription>
         </Alert>
       )}
