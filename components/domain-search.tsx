@@ -1,6 +1,6 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +59,6 @@ export default function DomainSearch() {
     { name: ".ac.ke", price: 1500, description: "Academic institutions" },
   ];
 
-  // Fetch registrars on component mount if user is authenticated
   useEffect(() => {
     const fetchRegistrars = async () => {
       if (!user) return;
@@ -68,7 +67,7 @@ export default function DomainSearch() {
         setRegistrars(response.registrars?.map((r: any) => r.name) || ["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]);
       } catch (error) {
         console.error("Failed to fetch registrars:", error);
-        setRegistrars(["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]); // Fallback
+        setRegistrars(["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]);
       }
     };
     fetchRegistrars();
@@ -76,24 +75,21 @@ export default function DomainSearch() {
 
   const generateAISuggestions = async (query: string) => {
     if (!query || !user) return [];
-
     try {
       const response = await domainApi.getAISuggestions(query, 4);
       return response.suggestions?.map((s: any) => s.domain.replace(/\.(co\.)?ke$/, '')) || [];
     } catch (error: any) {
       console.error("Failed to get AI suggestions:", error);
       setError(error.message || "Failed to fetch AI suggestions");
-      return [`${query}kenya`, `${query}hub`, `${query}pro`, `my${query}`].slice(0, 4); // Fallback
+      return [`${query}kenya`, `${query}hub`, `${query}pro`, `my${query}`].slice(0, 4);
     }
   };
 
-  // Check for trademark conflicts (mock - replace with KIPI API integration)
   const checkTrademarkConflict = (domain: string): boolean => {
     const conflictKeywords = ["safaricom", "equity", "kcb", "mpesa", "kenya", "government"];
     return conflictKeywords.some((keyword) => domain.toLowerCase().includes(keyword));
   };
 
-  // Detect similar domains (cybersquatting protection)
   const detectSimilarDomains = (domain: string): string[] => {
     const popularDomains = ["safaricom.co.ke", "equity.co.ke", "kcb.co.ke", "kenya.go.ke"];
     const similar = [];
@@ -121,16 +117,17 @@ export default function DomainSearch() {
     setError(null);
 
     try {
-      // Generate AI suggestions
       const suggestions = await generateAISuggestions(searchQuery);
       setAiSuggestions(suggestions);
 
-      // Prepare domains for bulk check
       const domainsToCheck = selectedExtensions.map((ext) => `${searchQuery}${ext}`);
-
       const response = await domainApi.bulkCheck(domainsToCheck);
 
-      const results: DomainResult[] = response.results?.map((result: any) => {
+      if (!response.results || !Array.isArray(response.results)) {
+        throw new Error("Invalid API response: results not found");
+      }
+
+      const results: DomainResult[] = response.results.map((result: any) => {
         const extension = selectedExtensions.find((ext) => result.domain.endsWith(ext)) || ".co.ke";
         const extensionInfo = extensions.find((e) => e.name === extension);
         const trademarkConflict = checkTrademarkConflict(searchQuery);
@@ -139,27 +136,23 @@ export default function DomainSearch() {
         return {
           name: searchQuery,
           extension,
-          available: result.available,
-          price: result.bestPrice?.price || extensionInfo?.price || 1200,
-          registrar: result.bestPrice?.registrar || registrars[0] || "KeNIC",
+          available: result.available ?? false,
+          price: result.bestPrice?.price ?? extensionInfo?.price ?? 1200,
+          registrar: result.bestPrice?.registrar ?? registrars[0] ?? "KeNIC",
           trademarkConflict,
           similarDomains: similarDomains.length > 0 ? similarDomains : undefined,
         };
-      }) || [];
+      });
 
       setSearchResults(results);
     } catch (error: any) {
       console.error("Domain search failed:", error);
-      let message = "Failed to search domains. Please try again.";
-      
-      if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
-        message = "Unauthorized: Please log in again";
-      } else if (error.message?.includes("429") || error.message?.includes("rate limit")) {
-        message = "Rate limit exceeded. Please try again later.";
-      } else if (error.message) {
-        message = error.message;
-      }
-      
+      const message =
+        error.message?.includes("401") || error.message?.includes("Unauthorized")
+          ? "Unauthorized: Please log in again"
+          : error.message?.includes("429") || error.message?.includes("rate limit")
+          ? "Rate limit exceeded. Please try again later."
+          : error.message || "Failed to search domains. Please try again.";
       setError(message);
     } finally {
       setIsSearching(false);
@@ -178,14 +171,10 @@ export default function DomainSearch() {
       setWhoisData(response.whoisData || response);
     } catch (error: any) {
       console.error("WHOIS lookup failed:", error);
-      let message = "Failed to get WHOIS information";
-      
-      if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
-        message = "Unauthorized: Please log in again";
-      } else if (error.message) {
-        message = error.message;
-      }
-      
+      const message =
+        error.message?.includes("401") || error.message?.includes("Unauthorized")
+          ? "Unauthorized: Please log in again"
+          : error.message || "Failed to get WHOIS information";
       setError(message);
       setShowWhois(false);
     }
@@ -230,7 +219,6 @@ export default function DomainSearch() {
 
   return (
     <div className="space-y-6">
-      {/* Error Alert */}
       {error && (
         <Alert className="bg-red-50 border-red-200">
           <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -238,7 +226,6 @@ export default function DomainSearch() {
         </Alert>
       )}
 
-      {/* Login Required Alert */}
       {!user && (
         <Alert className="bg-blue-50 border-blue-200">
           <Shield className="h-4 w-4 text-blue-600" />
@@ -248,18 +235,16 @@ export default function DomainSearch() {
         </Alert>
       )}
 
-      {/* Role Restriction Alert */}
       {user && user.role !== "registrar" && user.role !== "admin" && (
         <Alert className="bg-yellow-50 border-yellow-200">
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
             <strong>Role Restriction:</strong> Only users with "registrar" or "admin" roles can register domains. Your
-            role is "{user.role || \"user"}". Contact support to upgrade your account.
+            role is "{user.role || "user"}". Contact support to upgrade your account.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Search Interface */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -271,7 +256,6 @@ export default function DomainSearch() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Input */}
           <div className="flex space-x-2">
             <Input
               placeholder="Enter your domain name (e.g., mybusiness)"
@@ -300,7 +284,6 @@ export default function DomainSearch() {
             </Button>
           </div>
 
-          {/* Extension Selection */}
           <div className="space-y-2">
             <h4 className="font-medium">Select .KE Extensions</h4>
             <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
@@ -320,7 +303,6 @@ export default function DomainSearch() {
             </div>
           </div>
 
-          {/* KIPI Trademark Protection Notice */}
           <Alert className="bg-blue-50 border-blue-200">
             <Shield className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
@@ -329,7 +311,6 @@ export default function DomainSearch() {
             </AlertDescription>
           </Alert>
 
-          {/* Available Registrars */}
           {registrars.length > 0 && (
             <div className="space-y-2">
               <h4 className="font-medium">Available Registrars</h4>
@@ -345,7 +326,6 @@ export default function DomainSearch() {
         </CardContent>
       </Card>
 
-      {/* AI Suggestions */}
       {aiSuggestions.length > 0 && (
         <Card>
           <CardHeader>
@@ -372,7 +352,6 @@ export default function DomainSearch() {
         </Card>
       )}
 
-      {/* Search Results */}
       {searchResults.length > 0 && (
         <Card>
           <CardHeader>
@@ -410,7 +389,11 @@ export default function DomainSearch() {
                       {result.available && (
                         <Button
                           size="sm"
-                          className="bg-gradient-to-r from-primary to-blue-600"
+)}-webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    white-space: nowrap;
+    width: 1%;                          className="bg-gradient-to-r from-primary to-blue-600"
                           onClick={() => handleRegisterDomain(result)}
                           disabled={user?.role !== "registrar" && user?.role !== "admin"}
                         >
@@ -429,7 +412,6 @@ export default function DomainSearch() {
                     </div>
                   </div>
 
-                  {/* Trademark Conflict Warning */}
                   {result.trademarkConflict && (
                     <Alert className="bg-red-50 border-red-200">
                       <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -440,7 +422,6 @@ export default function DomainSearch() {
                     </Alert>
                   )}
 
-                  {/* Similar Domains Warning (Cybersquatting Protection) */}
                   {result.similarDomains && result.similarDomains.length > 0 && (
                     <Alert className="bg-orange-50 border-orange-200">
                       <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -461,7 +442,6 @@ export default function DomainSearch() {
         </Card>
       )}
 
-      {/* WHOIS Modal */}
       {showWhois && whoisData && (
         <Card className="fixed inset-4 z-50 bg-white shadow-2xl border-2 max-w-2xl mx-auto my-auto h-fit">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -474,47 +454,52 @@ export default function DomainSearch() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            {whoisData.domain ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground">Domain</h4>
+                  <p className="font-semibold">{whoisData.domain}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground">Status</h4>
+                  <Badge className="bg-green-100 text-green-800">{whoisData.status || "N/A"}</Badge>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground">Registrar</h4>
+                  <p>{whoisData.registrar || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground">Registrant</h4>
+                  <p>{whoisData.registrant || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground">Registration Date</h4>
+                  <p>{whoisData.registrationDate || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground">Expiry Date</h4>
+                  <p>{whoisData.expiryDate || "N/A"}</p>
+                </div>
+              </div>
+            ) : (
+              <p>No WHOIS data available.</p>
+            )}
+            {whoisData.nameServers && whoisData.nameServers.length > 0 && (
               <div>
-                <h4 className="font-medium text-sm text-muted-foreground">Domain</h4>
-                <p className="font-semibold">{whoisData.domain}</p>
+                <h4 className="font-medium text-sm text-muted-foreground mb-2">Name Servers</h4>
+                <div className="space-y-1">
+                  {whoisData.nameServers.map((ns: string, index: number) => (
+                    <p key={index} className="text-sm font-mono bg-gray-50 p-2 rounded">
+                      {ns}
+                    </p>
+                  ))}
+                </div>
               </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground">Status</h4>
-                <Badge className="bg-green-100 text-green-800">{whoisData.status}</Badge>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground">Registrar</h4>
-                <p>{whoisData.registrar}</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground">Registrant</h4>
-                <p>{whoisData.registrant}</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground">Registration Date</h4>
-                <p>{whoisData.registrationDate}</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground">Expiry Date</h4>
-                <p>{whoisData.expiryDate}</p>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium text-sm text-muted-foreground mb-2">Name Servers</h4>
-              <div className="space-y-1">
-                {whoisData.nameServers?.map((ns: string, index: number) => (
-                  <p key={index} className="text-sm font-mono bg-gray-50 p-2 rounded">
-                    {ns}
-                  </p>
-                ))}
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Background overlay for WHOIS modal */}
       {showWhois && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowWhois(false)} />}
     </div>
   );
