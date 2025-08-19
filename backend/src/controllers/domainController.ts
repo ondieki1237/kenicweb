@@ -31,7 +31,7 @@ export const checkDomain = async (req: Request, res: Response) => {
       ...availability,
       pricing,
       bestPrice: pricing.length ? pricing[0] : null,
-      averagePrice // Added for additional insight
+      averagePrice, // Added for additional insight
     });
   } catch (error: any) {
     res.status(500).json({ error: "WHOIS check failed", message: error.message });

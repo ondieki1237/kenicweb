@@ -60,12 +60,12 @@ export default function DomainSearch() {
   ];
 
   // Fetch registrars on component mount if user is authenticated
-  useState(() => {
+  useEffect(() => {
     const fetchRegistrars = async () => {
       if (!user) return;
       try {
         const response = await domainApi.getRegistrars();
-        setRegistrars(response.registrars || ["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]);
+        setRegistrars(response.registrars?.map((r: any) => r.name) || ["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]);
       } catch (error) {
         console.error("Failed to fetch registrars:", error);
         setRegistrars(["KeNIC", "Safaricom", "KCB Bank", "Equity Bank"]); // Fallback
@@ -78,8 +78,8 @@ export default function DomainSearch() {
     if (!query || !user) return [];
 
     try {
-      const response = await domainApi.getSuggestions(query);
-      return response.suggestions || [];
+      const response = await domainApi.getAISuggestions(query, 4);
+      return response.suggestions?.map((s: any) => s.domain.replace(/\.(co\.)?ke$/, '')) || [];
     } catch (error: any) {
       console.error("Failed to get AI suggestions:", error);
       setError(error.message || "Failed to fetch AI suggestions");
@@ -130,7 +130,7 @@ export default function DomainSearch() {
 
       const response = await domainApi.bulkCheck(domainsToCheck);
 
-      const results: DomainResult[] = response.results.map((result: any) => {
+      const results: DomainResult[] = response.results?.map((result: any) => {
         const extension = selectedExtensions.find((ext) => result.domain.endsWith(ext)) || ".co.ke";
         const extensionInfo = extensions.find((e) => e.name === extension);
         const trademarkConflict = checkTrademarkConflict(searchQuery);
@@ -140,21 +140,26 @@ export default function DomainSearch() {
           name: searchQuery,
           extension,
           available: result.available,
-          price: result.price || extensionInfo?.price || 1200,
-          registrar: result.registrar || registrars[0] || "KeNIC",
+          price: result.bestPrice?.price || extensionInfo?.price || 1200,
+          registrar: result.bestPrice?.registrar || registrars[0] || "KeNIC",
           trademarkConflict,
           similarDomains: similarDomains.length > 0 ? similarDomains : undefined,
         };
-      });
+      }) || [];
 
       setSearchResults(results);
     } catch (error: any) {
       console.error("Domain search failed:", error);
-      const message = error.response?.status === 401
-        ? "Unauthorized: Please log in again"
-        : error.response?.status === 429
-          ? "Rate limit exceeded. Please try again later."
-          : error.message || "Failed to search domains. Please try again.";
+      let message = "Failed to search domains. Please try again.";
+      
+      if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
+        message = "Unauthorized: Please log in again";
+      } else if (error.message?.includes("429") || error.message?.includes("rate limit")) {
+        message = "Rate limit exceeded. Please try again later.";
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       setError(message);
     } finally {
       setIsSearching(false);
@@ -170,12 +175,17 @@ export default function DomainSearch() {
     try {
       setShowWhois(true);
       const response = await domainApi.getWhois(domain);
-      setWhoisData(response);
+      setWhoisData(response.whoisData || response);
     } catch (error: any) {
       console.error("WHOIS lookup failed:", error);
-      const message = error.response?.status === 401
-        ? "Unauthorized: Please log in again"
-        : error.message || "Failed to get WHOIS information";
+      let message = "Failed to get WHOIS information";
+      
+      if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
+        message = "Unauthorized: Please log in again";
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       setError(message);
       setShowWhois(false);
     }

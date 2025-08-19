@@ -235,7 +235,7 @@ export const generateDomainSuggestions = (baseName: string, integrateAvailabilit
     }
   });
 
-  return suggestions.slice(0, 8);
+  return suggestions.slice(0, 8).sort((a, b) => a.bestPrice.price - b.bestPrice.price);
 };
 
 // Update registrar data (for future dynamic integration)

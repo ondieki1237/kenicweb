@@ -38,6 +38,20 @@ export default function LoginPage() {
   }
 
   const handleBypassToDashboard = () => {
+    // Create a mock user for demo purposes
+    const mockUser = {
+      id: "demo-user",
+      firstName: "Demo",
+      lastName: "User",
+      email: "demo@example.com",
+      phone: "+254 700 000 000",
+      role: "admin",
+      company: "Demo Company",
+      token: "demo-token"
+    };
+    
+    // Store mock token and redirect
+    localStorage.setItem("auth_token", "demo-token");
     router.push("/dashboard")
   }
   return (

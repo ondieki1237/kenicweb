@@ -3,7 +3,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 // Get auth token from localStorage
 const getAuthToken = () => {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("token")
+    return localStorage.getItem("auth_token")
   }
   return null
 }
@@ -59,6 +59,14 @@ export const domainApi = {
   // Get list of registrars
   getRegistrars: async () => {
     return apiRequest("/api/domains/registrars")
+  },
+
+  // AI-powered domain suggestions
+  getAISuggestions: async (businessDescription: string, max: number = 5) => {
+    return apiRequest("/api/domains/ai-suggestions", {
+      method: "POST",
+      body: JSON.stringify({ businessDescription, max }),
+    })
   },
 }
 

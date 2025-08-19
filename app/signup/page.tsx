@@ -188,7 +188,6 @@ export default function RegisterPage() {
                   <Select
                     value={formData.role}
                     onValueChange={(value) => handleInputChange("role", value)}
-                    required
                   >
                     <SelectTrigger className="h-11 pl-10">
                       <SelectValue placeholder="Select your role" />

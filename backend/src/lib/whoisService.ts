@@ -1,7 +1,7 @@
 
 
 import net from 'net';
-import NodeCache from 'node-cache'; // Add this dependency for caching
+import NodeCache from 'node-cache';
 
 export interface Registrant {
   name: string;

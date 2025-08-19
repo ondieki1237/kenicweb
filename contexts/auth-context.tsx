@@ -33,8 +33,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const token = localStorage.getItem("auth_token");
         if (token) {
-          const userData = await verifyToken(token);
-          setUser({ ...userData, token });
+          if (token === "demo-token") {
+            // Handle demo token
+            setUser({
+              id: "demo-user",
+              firstName: "Demo",
+              lastName: "User",
+              email: "demo@example.com",
+              phone: "+254 700 000 000",
+              role: "admin",
+              company: "Demo Company",
+              token: "demo-token"
+            });
+          } else {
+            const userData = await verifyToken(token);
+            setUser({ ...userData, token });
+          }
         }
       } catch (error) {
         console.error("Auth verification failed:", error);

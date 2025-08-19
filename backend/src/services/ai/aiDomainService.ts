@@ -1,11 +1,11 @@
 
 
 // src/services/ai/aiDomainService.ts
-import pLimit from "p-limit";
 import { checkDomainAvailability } from "../../lib/whoisService";
 import { getDomainPricing, DomainPricing } from "../../lib/registrarService"; // Updated import
 import axios from "axios";
 import { ParsedWhois } from "../../lib/whoisService";
+const pLimit = require("p-limit");
 
 const ALLOWED_KE_EXTENSIONS = [
   ".ke",

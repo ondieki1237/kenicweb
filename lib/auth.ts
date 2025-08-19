@@ -4,6 +4,7 @@ export interface User {
   lastName: string;
   email: string;
   phone?: string;
+  role?: string;
   company?: string;
   token: string;
 }
@@ -19,8 +20,8 @@ export interface SignupData {
   email: string;
   phone: string;
   password: string;
-  role: string;      // <-- Add this
-  company?: string;  // <-- Add this (optional)
+  role: string;
+  company?: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -41,7 +42,10 @@ export async function loginUser(credentials: LoginCredentials): Promise<User> {
   }
 
   const data = await response.json();
-  return data.user;
+  return {
+    ...data.user,
+    token: data.token,
+  };
 }
 
 // Register function (renamed from signupUser)
@@ -60,7 +64,10 @@ export async function registerUser(userData: SignupData): Promise<User> {
   }
 
   const data = await response.json();
-  return data.user;
+  return {
+    ...data.user,
+    token: data.token,
+  };
 }
 
 // Verify token function
@@ -78,7 +85,10 @@ export async function verifyToken(token: string): Promise<User> {
   }
 
   const data = await response.json();
-  return data.user;
+  return {
+    ...data.user,
+    token,
+  };
 }
 
 // Logout function

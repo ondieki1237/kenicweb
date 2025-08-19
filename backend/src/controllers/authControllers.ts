@@ -30,7 +30,15 @@ export const register = async (req: Request, res: Response) => {
     res.status(201).json({
       message: "User registered successfully",
       token,
-      user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, role: user.role, company: user.company },
+      user: { 
+        id: user._id, 
+        firstName: user.firstName, 
+        lastName: user.lastName, 
+        email: user.email, 
+        phone: user.phone, 
+        role: user.role, 
+        company: user.company 
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -52,7 +60,15 @@ export const login = async (req: Request, res: Response) => {
     res.json({
       message: "Login successful",
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { 
+        id: user._id, 
+        firstName: user.firstName, 
+        lastName: user.lastName, 
+        email: user.email, 
+        phone: user.phone, 
+        role: user.role, 
+        company: user.company 
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
