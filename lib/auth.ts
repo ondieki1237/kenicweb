@@ -19,6 +19,8 @@ export interface SignupData {
   email: string;
   phone: string;
   password: string;
+  role: string;      // <-- Add this
+  company?: string;  // <-- Add this (optional)
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";

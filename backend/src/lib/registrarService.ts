@@ -1,4 +1,4 @@
-// services/registrarService.ts
+
 
 export interface Registrar {
   id: string;
@@ -25,6 +25,7 @@ export interface DomainPricing {
   rating: number;
   reviews: number;
   features: string[];
+  registerUrl?: string; // Added for direct registration link
 }
 
 export interface DomainSuggestion {
@@ -32,6 +33,7 @@ export interface DomainSuggestion {
   bestPrice: DomainPricing;
   allPricing: DomainPricing[];
   available: boolean;
+  expiryDate?: string; // Added to track potential expiration (if integrated with WHOIS)
 }
 
 // Real Kenyan Domain Registrars and Pricing
@@ -166,8 +168,13 @@ export const registrars: Registrar[] = [
   }
 ];
 
-// Get pricing for a specific domain
+// Get pricing for a specific domain with validation and error handling
 export const getDomainPricing = (domainName: string): DomainPricing[] => {
+  if (!domainName || typeof domainName !== 'string') {
+    console.warn('Invalid domain name provided');
+    return [];
+  }
+
   const extension = domainName.split('.').pop();
   const fullExtension = domainName.includes('.') ? domainName.substring(domainName.lastIndexOf('.')) : `.${domainName}`;
 
@@ -175,7 +182,7 @@ export const getDomainPricing = (domainName: string): DomainPricing[] => {
 
   registrars.forEach((registrar) => {
     let price = registrar.pricing[fullExtension];
-    if (!price) price = registrar.pricing[`.${extension}`];
+    if (!price && extension) price = registrar.pricing[`.${extension}`];
     if (!price && extension === 'ke') price = registrar.pricing['.co.ke'];
 
     if (price) {
@@ -189,24 +196,29 @@ export const getDomainPricing = (domainName: string): DomainPricing[] => {
         currency: 'KES',
         rating: registrar.rating,
         reviews: registrar.reviews,
-        features: registrar.features
+        features: registrar.features,
+        registerUrl: `${registrar.website}/domain-registration?domain=${encodeURIComponent(domainName)}`, // Added registration link
       });
     }
   });
 
-  return pricing.sort((a, b) => a.price - b.price);
+  return pricing.length > 0 ? pricing.sort((a, b) => a.price - b.price) : [];
 };
 
+// Retrieve all registrars
 export const getAllRegistrars = (): Registrar[] => registrars;
 
+// Retrieve a specific registrar by ID
 export const getRegistrarById = (id: string): Registrar | undefined => registrars.find(r => r.id === id);
 
+// Get the best (cheapest) price for a domain
 export const getBestPrice = (domainName: string): DomainPricing | null => {
   const pricing = getDomainPricing(domainName);
   return pricing.length > 0 ? pricing[0] : null;
 };
 
-export const generateDomainSuggestions = (baseName: string): DomainSuggestion[] => {
+// Generate domain suggestions with optional availability integration
+export const generateDomainSuggestions = (baseName: string, integrateAvailability = false): DomainSuggestion[] => {
   const suggestions: DomainSuggestion[] = [];
   const extensions = ['.co.ke', '.or.ke', '.ac.ke', '.sc.ke', '.go.ke', '.me.ke', '.com', '.org', '.africa', '.xyz', '.net'];
 
@@ -218,10 +230,22 @@ export const generateDomainSuggestions = (baseName: string): DomainSuggestion[] 
         domain: domainName,
         bestPrice: pricing[0],
         allPricing: pricing,
-        available: true
+        available: integrateAvailability ? false : true, // Default true, set to false if availability check is intended
       });
     }
   });
 
   return suggestions.slice(0, 8);
+};
+
+// Update registrar data (for future dynamic integration)
+export const updateRegistrars = (newRegistrars: Registrar[]): void => {
+  Object.assign(registrars, newRegistrars); // Merge new data, preserving existing structure
+  console.log('Registrars updated successfully');
+};
+
+// Calculate average price across registrars for a domain
+export const getAveragePrice = (domainName: string): number => {
+  const pricing = getDomainPricing(domainName);
+  return pricing.length > 0 ? pricing.reduce((sum, p) => sum + p.price, 0) / pricing.length : 0;
 };

@@ -4,7 +4,8 @@ import {
   whois, 
   bulkCheck, 
   suggestions, 
-  registrars 
+  registrars,
+  aiSuggestDomain
 } from "../controllers/domainController";
 import { protect } from "../middleware/authMiddleware";
 
@@ -24,5 +25,7 @@ router.get("/suggestions/:baseName", protect, suggestions);
 
 // List all accredited registrars
 router.get("/registrars", protect, registrars);
+// AI-powered domain suggestion
+router.post("/ai-suggestions", protect, aiSuggestDomain);
 
 export default router;
