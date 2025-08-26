@@ -45,66 +45,43 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  /* Adding red color variables for accent touches */
-  --color-red-50: oklch(0.97 0.013 17.38);
-  --color-red-100: oklch(0.94 0.042 17.38);
-  --color-red-500: oklch(0.63 0.257 25.331);
-  --color-red-600: oklch(0.55 0.232 25.331);
-  --color-red-700: oklch(0.45 0.207 25.331);
-  /* Adding crimson color variables to replace purple touches */
-  --color-crimson-50: oklch(0.97 0.02 15);
-  --color-crimson-100: oklch(0.94 0.05 15);
-  --color-crimson-200: oklch(0.88 0.1 15);
-  --color-crimson-500: oklch(0.55 0.22 15);
-  --color-crimson-600: oklch(0.45 0.25 15);
-  --color-crimson-700: oklch(0.35 0.28 15);
-  /* Adding blue and green color variables for trustworthy animation colors */
-  --color-blue-400: oklch(0.7 0.15 240);
-  --color-blue-500: oklch(0.6 0.18 240);
-  --color-blue-600: oklch(0.5 0.2 240);
-  --color-green-400: oklch(0.75 0.15 140);
-  --color-green-500: oklch(0.65 0.18 140);
-  --color-green-600: oklch(0.55 0.2 140);
-  --color-emerald-500: oklch(0.65 0.15 160);
-  --color-yellow-500: oklch(0.8 0.15 85);
-  --color-yellow-600: oklch(0.7 0.18 85);
 }
 
 :root {
-  /* Updated color tokens to match Kendomi brand colors */
-  --background: oklch(1 0 0); /* White #FFFFFF */
-  --foreground: oklch(0.22 0.01 264.05); /* Dark gray #1F2937 */
-  --card: oklch(0.99 0 0); /* Near-white #F8FFFE */
-  --card-foreground: oklch(0.22 0.01 264.05); /* Dark gray #1F2937 */
-  --popover: oklch(1 0 0); /* White */
-  --popover-foreground: oklch(0.22 0.01 264.05); /* Dark gray */
-  --primary: oklch(0.35 0.12 174.23); /* Dark teal #006A4E */
-  --primary-foreground: oklch(1 0 0); /* White */
-  --secondary: oklch(0.45 0.01 264.05); /* Medium gray #6B7280 */
-  --secondary-foreground: oklch(1 0 0); /* White */
-  --muted: oklch(0.99 0 0); /* Near-white #F8FFFE */
-  --muted-foreground: oklch(0.45 0.01 264.05); /* Medium gray #6B7280 */
-  --accent: oklch(0.82 0.15 85.87); /* Yellow #FFCB05 */
-  --accent-foreground: oklch(0.22 0.01 264.05); /* Dark gray */
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0 0); /* Light gray #E5E5E5 */
-  --input: oklch(1 0 0); /* White */
-  --ring: oklch(0.35 0.12 174.23 / 0.5); /* Dark teal with opacity */
-  --chart-1: oklch(0.35 0.12 174.23); /* Dark teal */
-  --chart-2: oklch(0.82 0.15 85.87); /* Yellow */
-  --chart-3: oklch(0.45 0.01 264.05); /* Medium gray */
-  --chart-4: oklch(0.99 0 0); /* Near-white */
-  --chart-5: oklch(0.22 0.01 264.05); /* Dark gray */
-  --radius: 0.625rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.22 0.01 264.05);
-  --sidebar-primary: oklch(0.35 0.12 174.23);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.82 0.15 85.87);
-  --sidebar-accent-foreground: oklch(0.22 0.01 264.05);
-  --sidebar-border: oklch(0.91 0 0);
-  --sidebar-ring: oklch(0.35 0.12 174.23 / 0.3);
+  /* Updated color tokens to match minimalist design brief */
+  --background: #ffffff; /* Pure white for clean minimalist look */
+  --foreground: #4b5563; /* Dark gray for primary text */
+  --card: rgba(255, 255, 255, 0.8); /* Semi-transparent white for glassmorphism */
+  --card-foreground: #4b5563; /* Dark gray for card text */
+  --popover: rgba(255, 255, 255, 0.9); /* Glassmorphism effect for popovers */
+  --popover-foreground: #4b5563; /* Text color for popover content */
+  --primary: #164e63; /* Teal-800 for primary actions */
+  --primary-foreground: #ffffff; /* White text on primary buttons */
+  --secondary: #a16207; /* Yellow-700 for secondary actions */
+  --secondary-foreground: #ffffff; /* White text on secondary buttons */
+  --muted: #f0f4f8; /* Light gray for muted backgrounds */
+  --muted-foreground: #6b7280; /* Medium gray for muted text */
+  --accent: #a16207; /* Yellow-700 for accent highlights */
+  --accent-foreground: #ffffff; /* White text on accent elements */
+  --destructive: #ea580c; /* Orange for destructive actions */
+  --destructive-foreground: #ffffff; /* White text on destructive buttons */
+  --border: #e5e7eb; /* Light border color */
+  --input: #f9fafb; /* Very light gray for input backgrounds */
+  --ring: rgba(22, 78, 99, 0.4); /* Teal focus ring with opacity */
+  --chart-1: #164e63; /* Teal for charts */
+  --chart-2: #a16207; /* Yellow for charts */
+  --chart-3: #ea580c; /* Orange for charts */
+  --chart-4: #f97316; /* Light orange for charts */
+  --chart-5: #4b5563; /* Dark gray for charts */
+  --radius: 0.5rem; /* Consistent border radius */
+  --sidebar: #f0f4f8; /* Light gray sidebar background */
+  --sidebar-foreground: #4b5563; /* Dark gray sidebar text */
+  --sidebar-primary: #164e63; /* Teal for sidebar primary actions */
+  --sidebar-primary-foreground: #ffffff; /* White text for sidebar primary */
+  --sidebar-accent: #a16207; /* Yellow for sidebar accents */
+  --sidebar-accent-foreground: #ffffff; /* White text for sidebar accents */
+  --sidebar-border: #e5e7eb; /* Light border for sidebar */
+  --sidebar-ring: rgba(22, 78, 99, 0.4); /* Teal focus ring for sidebar */
 }
 
 .dark {
@@ -150,6 +127,88 @@
     @apply bg-background text-foreground font-sans;
   }
 
+  /* Added minimalist button styles with attractive shadows */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+
+  .btn-glass {
+    @apply bg-white/20 backdrop-blur-md border border-white/30 text-foreground hover:bg-white/30 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+
+  /* Enhanced glassmorphism card styles */
+  .card-glass {
+    @apply bg-card/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+
+  /* Refined typography classes for minimalist look */
+  .font-heading {
+    font-family: "Glacial Indifference", ui-serif, Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  .font-heading-bold {
+    font-family: "Glacial Indifference", ui-serif, Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+  }
+
+  .font-body {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .font-body-medium {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* Added gentle fade-in animations for sections */
+  @keyframes gentle-fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes float-gentle {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .animate-gentle-fade-in {
+    animation: gentle-fade-in 0.6s ease-out forwards;
+  }
+
+  .animate-float-gentle {
+    animation: float-gentle 3s ease-in-out infinite;
+  }
+
+  /* Utility classes for consistent spacing and effects */
+  .section-spacing {
+    @apply py-12 md:py-16;
+  }
+
+  .container-padding {
+    @apply px-4 md:px-6 lg:px-8;
+  }
+
   /* Adding custom red utility classes for accent touches */
   .text-red-accent {
     color: oklch(0.63 0.257 25.331);
@@ -182,31 +241,6 @@
   }
   .text-crimson-600 {
     color: oklch(0.45 0.25 15);
-  }
-
-  /* Adding refined typography classes for polished look */
-  .font-heading {
-    font-family: "Glacial Indifference", ui-serif, Georgia, serif;
-    font-weight: 600;
-    letter-spacing: -0.025em;
-  }
-
-  .font-heading-bold {
-    font-family: "Glacial Indifference", ui-serif, Georgia, serif;
-    font-weight: 700;
-    letter-spacing: -0.05em;
-  }
-
-  .font-body {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    font-weight: 400;
-    letter-spacing: 0;
-  }
-
-  .font-body-medium {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    font-weight: 500;
-    letter-spacing: 0;
   }
 
   /* Adding custom animation keyframes for domain flow */

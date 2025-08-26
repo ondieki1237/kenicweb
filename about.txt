@@ -1,0 +1,101 @@
+Website Summary:
+----------------
+This website is a modern, AI-powered domain search and registration platform focused on Kenyan (.ke) domains. It leverages artificial intelligence to help users find, check, and register the best domain names for their businesses, with additional features like trademark conflict detection and WHOIS lookup. The platform is designed for ease of use, security, and a seamless user experience.
+
+Main Features:
+--------------
+- AI-driven domain name suggestions based on user queries or business descriptions.
+- Bulk domain availability checks across multiple .ke extensions.
+- Trademark conflict detection to help users avoid legal issues.
+- WHOIS lookup for detailed domain registration information.
+- Secure domain registration and payment processing.
+- User authentication and personalized dashboard.
+
+Pages & Their Roles:
+--------------------
+1. **Home Page (`/`)**
+   - Introduction to the platform and its benefits.
+   - Quick search bar for instant domain checks.
+   - Highlights of AI features and security.
+
+2. **Dashboard (`/dashboard`)**
+   - Central hub for authenticated users.
+   - Allows users to search for domains, view AI suggestions, and manage their domains.
+   - Inputs: Search query, selected extensions, business description.
+   - Outputs: List of available domains, AI suggestions, registration options.
+
+3. **Domain Search (`/dashboard` section)**
+   - Users enter a domain name or business description.
+   - AI generates relevant domain suggestions.
+   - Outputs: Domain availability, pricing, registrar info, trademark warnings, similar domains.
+
+4. **WHOIS Lookup (Modal, triggered from `/dashboard`)**
+   - Users can view detailed WHOIS information for any domain.
+   - Inputs: Domain name.
+   - Outputs: Registrar, registrant, registration/expiry dates, name servers.
+
+5. **Checkout/Payment (`/checkout` or modal)**
+   - Secure payment interface for domain registration.
+   - Inputs: Selected domain, user details, payment info.
+   - Outputs: Registration confirmation, receipt.
+
+6. **Authentication (`/login`, `/register`)**
+   - User sign-in and sign-up pages.
+   - Inputs: Email, password, etc.
+   - Outputs: Authenticated session, error messages.
+
+7. **Error/Info Pages (`/error`, `/info`)**
+   - Display error messages or important information.
+   - Outputs: User guidance, troubleshooting steps.
+
+Data Flow:
+----------
+- **Inputs:** User search queries, selected domain extensions, business descriptions, payment details.
+- **Processing:** AI generates suggestions, backend checks domain availability, detects trademark conflicts, and fetches WHOIS data.
+- **Outputs:** Available domains, AI suggestions, warnings, WHOIS info, registration status.
+
+Relative Domains/Routes:
+------------------------
+- `/`                → Home
+- `/dashboard`       → Main user dashboard & domain search
+- `/checkout`        → Payment/registration
+- `/login`           → User login
+- `/register`        → User registration
+- `/error`           → Error handling
+- `/info`            → Info/help
+
+Design Details:
+---------------
+- **Color Theme:**  
+  - Primary: #2563eb (blue)  
+  - Accent: #fbbf24 (amber/yellow)  
+  - Background: #f9fafb (light gray)  
+  - Card: #ffffff (white)  
+  - Border: #e5e7eb (light border gray)  
+  - Destructive: #ef4444 (red for errors/warnings)  
+  - Muted: #f3f4f6 (muted backgrounds)  
+  - Chart-5: #f59e42 (orange for similar domain warnings)
+
+- **Fonts:**  
+  - Headings: Inter, sans-serif, bold  
+  - Body: Inter, sans-serif, regular  
+  - Monospace (for code/WHOIS): Fira Mono, monospace
+
+- **UI Elements:**  
+  - Rounded corners (`border-radius: 0.75rem`)
+  - Subtle shadows for cards and modals
+  - Responsive grid layouts for domain results and extension selectors
+  - Animated transitions for modals and result cards (using Framer Motion)
+  - Clear, accessible buttons with hover and focus states
+
+- **Accessibility:**  
+  - High color contrast for text and buttons
+  - Keyboard navigable forms and modals
+  - ARIA labels for important actions
+
+- **Other Details:**  
+  - Uses local storage to remember last search and selected extensions
+  - Error handling with user-friendly messages
+  - Secure authentication and payment flows
+
+This summary provides a comprehensive overview of the website's structure, features, and design, which you can use as a blueprint for building a similar

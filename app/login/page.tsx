@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,53 +39,47 @@ export default function LoginPage() {
   }
 
   const handleBypassToDashboard = () => {
-    // Create a mock user for demo purposes
-    const mockUser = {
-      id: "demo-user",
-      firstName: "Demo",
-      lastName: "User",
-      email: "demo@example.com",
-      phone: "+254 700 000 000",
-      role: "admin",
-      company: "Demo Company",
-      token: "demo-token"
-    };
-    
-    // Store mock token and redirect
-    localStorage.setItem("auth_token", "demo-token");
     router.push("/dashboard")
   }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-blue-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-muted/30 via-background to-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md animate-gentle-fade-in">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary mb-4">
+          <Link
+            href="/"
+            className="inline-flex items-center text-muted-foreground hover:text-primary mb-6 transition-colors"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Home
           </Link>
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-8 w-auto" />
+          <div className="flex items-center justify-center space-x-3 mb-6">
+            <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-10 w-auto" />
           </div>
-          <h1 className="text-2xl font-bold font-serif">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to manage your .KE domains</p>
+          <h1 className="text-3xl font-heading-bold mb-2">Welcome Back</h1>
+          <p className="text-muted-foreground font-body">Sign in to manage your .KE domains</p>
         </div>
 
-        <Card className="border-border shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl text-center">Sign In</CardTitle>
-            <CardDescription className="text-center">
+        <Card className="card-glass border-0">
+          <CardHeader className="space-y-2 pb-6">
+            <CardTitle className="text-2xl text-center font-heading">Sign In</CardTitle>
+            <CardDescription className="text-center font-body">
               Enter your credentials to access your domain dashboard
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-5">
               {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>
+                <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+                  {error}
+                </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="font-body-medium">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -92,12 +87,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11"
+                  className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="font-body-medium">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -106,13 +103,13 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="h-11 pr-10"
+                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors pr-12"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -131,28 +128,25 @@ export default function LoginPage() {
                     checked={rememberMe}
                     onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                   />
-                  <Label htmlFor="remember" className="text-sm">
+                  <Label htmlFor="remember" className="text-sm font-body">
                     Remember me
                   </Label>
                 </div>
-                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-primary hover:text-primary/80 transition-colors font-body-medium"
+                >
                   Forgot password?
                 </Link>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full h-12 btn-primary font-body-medium" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
 
-              {/* Bypass Button for Demo */}
               <Button
                 type="button"
-                variant="outline"
-                className="w-full h-11 border-2 border-dashed border-primary text-primary hover:bg-primary/5 bg-transparent"
+                className="w-full h-12 btn-glass font-body-medium"
                 onClick={handleBypassToDashboard}
               >
                 <Globe className="h-4 w-4 mr-2" />
@@ -160,10 +154,10 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="mt-8 text-center">
+              <p className="text-sm text-muted-foreground font-body">
                 Don't have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
+                <Link href="/signup" className="text-primary hover:text-primary/80 transition-colors font-body-medium">
                   Sign up here
                 </Link>
               </p>
@@ -171,13 +165,12 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Trust indicators */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-muted-foreground mb-2">Trusted by 110,000+ .KE domain owners</p>
-          <div className="flex justify-center space-x-4 text-xs text-muted-foreground">
-            <span>🔒 Secure Login</span>
-            <span>🇰🇪 Kenya Registry</span>
-            <span>⚡ Instant Access</span>
+        <div className="mt-8 text-center space-y-3">
+          <p className="text-sm text-muted-foreground font-body">Trusted by 110,000+ .KE domain owners</p>
+          <div className="flex justify-center space-x-6 text-sm text-muted-foreground font-body">
+            <span className="flex items-center">🔒 Secure</span>
+            <span className="flex items-center">🇰🇪 Official</span>
+            <span className="flex items-center">⚡ Instant</span>
           </div>
         </div>
       </div>

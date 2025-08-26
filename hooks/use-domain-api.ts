@@ -63,6 +63,20 @@ export const useDomainApi = () => {
     }
   }
 
+  const getAISuggestions = async (baseName: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await domainApi.getAISuggestions(baseName)
+      return result
+    } catch (err: any) {
+      setError(err.message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getRegistrars = async () => {
     setLoading(true)
     setError(null)
@@ -82,6 +96,7 @@ export const useDomainApi = () => {
     getWhois,
     bulkCheck,
     getSuggestions,
+    getAISuggestions,
     getRegistrars,
     loading,
     error,

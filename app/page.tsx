@@ -1,18 +1,49 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, Shield, Smartphone, Globe, CheckCircle, Star, Users, Building2, Menu, X } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Search, Shield, Smartphone, Globe, CheckCircle, Star, Users, Building2, Menu, X, AlertTriangle, ShoppingCart } from "lucide-react"
 import FlowingHeroAnimation from "@/components/flowing-hero-animation"
 import Link from "next/link"
+import { domainApi } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
+
+interface DomainResult {
+  name: string
+  extension: string
+  available: boolean
+  price: number
+  registrar: string
+}
 
 export default function HomePage() {
+  const { user } = useAuth()
   const [domain, setDomain] = useState("")
+  const [extension, setExtension] = useState(".co.ke")
+  const [searchResults, setSearchResults] = useState<DomainResult[]>([])
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const router = useRouter()
+
+  const extensions = [
+    { name: ".co.ke", price: 1200, description: "Commercial entities" },
+    { name: ".or.ke", price: 1000, description: "Organizations" },
+    { name: ".ne.ke", price: 1000, description: "Network providers" },
+    { name: ".go.ke", price: 1500, description: "Government entities" },
+    { name: ".me.ke", price: 1200, description: "Personal websites" },
+    { name: ".mobi.ke", price: 1300, description: "Mobile websites" },
+    { name: ".info.ke", price: 1100, description: "Information sites" },
+    { name: ".sc.ke", price: 1400, description: "Schools" },
+    { name: ".ac.ke", price: 1500, description: "Academic institutions" },
+  ]
 
   useEffect(() => {
     const observerOptions = {
@@ -43,6 +74,107 @@ export default function HomePage() {
     }
   }, [])
 
+  const handleSearch = async () => {
+    if (!domain.trim()) {
+      setError("Please enter a domain name to search.")
+      return
+    }
+    setLoading(true)
+    setSearchResults([])
+    setSuggestions([])
+    setError(null)
+
+    try {
+      const fullDomain = `${domain.trim()}${extension}`
+      console.log("[HomePage] Searching for domain:", fullDomain)
+
+      // Use domainApi.bulkCheck to check domain availability
+      const response = await domainApi.bulkCheck([fullDomain])
+
+      const results: DomainResult[] = response.results?.map((result: any) => {
+        const extensionInfo = extensions.find((e) => e.name === extension) || { price: 1200 }
+        const bestPrice = result?.bestPrice
+        const numericPrice =
+          typeof result?.price === "number"
+            ? result.price
+            : bestPrice && typeof bestPrice?.price === "number"
+              ? bestPrice.price
+              : extensionInfo.price
+        const registrarName =
+          typeof result?.registrar === "string"
+            ? result.registrar
+            : bestPrice && typeof bestPrice?.registrar === "string"
+              ? bestPrice.registrar
+              : "KeNIC"
+
+        return {
+          name: domain.trim(),
+          extension,
+          available: !!result.available,
+          price: numericPrice,
+          registrar: registrarName,
+        }
+      }) || []
+
+      setSearchResults(results)
+
+      // Fetch AI-powered suggestions
+      if (user) {
+        try {
+          const suggestionsData = await domainApi.getAISuggestions(domain.trim(), {
+            businessDescription: `Business related to ${domain}`,
+            industry: "general",
+            targetAudience: "general public",
+          })
+          const normalizedSuggestions = suggestionsData.suggestions?.map((s: any) => {
+            if (typeof s === "string") return s
+            if (s && typeof s === "object") return s.text || s.name || s.title || s.value || JSON.stringify(s)
+            return String(s)
+          }).filter(Boolean) || []
+          setSuggestions(Array.from(new Set(normalizedSuggestions)).slice(0, 6))
+        } catch (suggestionError) {
+          console.error("[HomePage] Error fetching suggestions:", suggestionError)
+          setSuggestions([
+            `${domain}kenya`,
+            `${domain}hub`,
+            `${domain}pro`,
+            `my${domain}`,
+            `${domain}online`,
+            `${domain}digital`,
+          ].slice(0, 6))
+        }
+      }
+    } catch (err: any) {
+      setError(`❌ Error searching domain: ${err.message || "Please try again later."}`)
+      console.error("[HomePage] Search error:", err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSuggestionClick = (suggestion: string) => {
+    const [name, ext] = suggestion.split(/(?=\.\w+$)/)
+    setDomain(name)
+    setExtension(ext || ".co.ke")
+    handleSearch()
+  }
+
+  const handleRegisterDomain = (result: DomainResult) => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+    // For authenticated users, redirect to dashboard or payment flow
+    try {
+      const fullDomain = `${result.name}${result.extension}`
+      localStorage.setItem("landing_search_query", fullDomain)
+      localStorage.setItem("landing_selected_extensions", JSON.stringify([result.extension]))
+      router.push("/dashboard?tab=register")
+    } catch {
+      setError("Error redirecting to registration. Please try again.")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-blue-50 to-white text-foreground transition-colors duration-300 font-sans">
       {/* Header */}
@@ -54,10 +186,8 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
             <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-8 w-auto md:h-10 cursor-pointer" />
-            <span className="text-xl md:text-2xl font-bold"></span>
           </Link>
 
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <a
               href="#features"
@@ -99,7 +229,6 @@ export default function HomePage() {
             </Link>
           </nav>
 
-          {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="sm"
@@ -111,7 +240,6 @@ export default function HomePage() {
           </Button>
         </div>
 
-        {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-background">
             <nav className="container mx-auto px-4 py-4 flex flex-col space-y-4">
@@ -153,7 +281,7 @@ export default function HomePage() {
         )}
       </header>
 
-      {/* Hero Section with Flowing Animation */}
+      {/* Hero Section with Enhanced Search */}
       <section className="py-8 md:py-12 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white relative overflow-hidden">
         <div className="container mx-auto text-center max-w-6xl relative z-10">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight font-serif">
@@ -163,55 +291,124 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-            <span className="block">
-              Search, secure, and manage your .KE domain with KeNIC's trusted infrastructure and local expertise.
-            </span>
+            Search, secure, and manage your .KE domain with KeNIC's trusted infrastructure and local expertise.
           </p>
-          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-3xl p-8 mb-8 shadow-2xl max-w-2xl mx-auto mt-8">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-3xl p-8 mb-8 shadow-2xl max-w-3xl mx-auto mt-8">
             <div className="flex flex-col space-y-4">
+              {error && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
+              {!user && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Shield className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    <strong>Login Required:</strong> Please log in to register domains.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
+                <div className="flex-1 relative flex">
                   <Input
                     type="text"
                     placeholder="Enter your domain name..."
                     value={domain}
                     onChange={(e) => setDomain(e.target.value)}
-                    className="text-lg py-4 pl-4 pr-20 border-0 bg-gray-50 rounded-2xl focus:ring-2 focus:ring-primary"
+                    className="text-lg py-4 pl-4 pr-24 border-0 bg-gray-50 rounded-l-2xl focus:ring-2 focus:ring-primary flex-1"
                     aria-label="Domain search input"
+                    onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                   />
-                  <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-green-600 font-medium">
-                    .co.ke
-                  </span>
+                  <select
+                    value={extension}
+                    onChange={(e) => setExtension(e.target.value)}
+                    className="absolute right-0 top-0 h-full bg-gray-100 border-l border-gray-300 text-green-600 font-medium px-3 rounded-r-2xl focus:outline-none"
+                    aria-label="Select domain extension"
+                  >
+                    {extensions.map((ext) => (
+                      <option key={ext.name} value={ext.name}>
+                        {ext.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <Button
                   size="lg"
                   className="text-lg px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 hover:scale-105 transition-all duration-300 shadow-lg"
+                  onClick={handleSearch}
+                  disabled={loading}
+                  aria-label="Search .KE domains"
                 >
                   <Search className="mr-2 h-5 w-5" />
-                  Start Domain Search
+                  {loading ? "Searching..." : "Search .KE Domains"}
                 </Button>
               </div>
-
               <div className="flex flex-wrap justify-center gap-2">
-                {[".co.ke", ".or.ke", ".ne.ke", ".go.ke", ".me.ke", ".mobi.ke", ".info.ke", ".sc.ke", ".ac.ke"].map(
-                  (ext) => (
-                    <Badge
-                      key={ext}
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-green-600 hover:text-white transition-all duration-300 hover:scale-105 bg-white/60 backdrop-blur-sm text-green-600 border-green-200 font-medium"
-                    >
-                      {ext}
-                    </Badge>
-                  ),
-                )}
+                {extensions.map((ext) => (
+                  <Badge
+                    key={ext.name}
+                    variant="secondary"
+                    className={`cursor-pointer hover:bg-green-600 hover:text-white transition-all duration-300 hover:scale-105 bg-white/60 backdrop-blur-sm text-green-600 border-green-200 font-medium ${
+                      extension === ext.name ? "bg-green-600 text-white" : ""
+                    }`}
+                    onClick={() => setExtension(ext.name)}
+                  >
+                    {ext.name}
+                  </Badge>
+                ))}
               </div>
             </div>
           </div>
 
+          {/* Results Section */}
+          {(searchResults.length > 0 || suggestions.length > 0) && (
+            <Card className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200 max-w-3xl mx-auto mt-6">
+              <CardHeader>
+                <CardTitle>Search Results</CardTitle>
+                <CardDescription>Found {searchResults.length} results for "{domain}"</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {searchResults.map((result) => (
+                    <div key={`${result.name}${result.extension}`} className="border rounded-lg p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-semibold">{result.name}{result.extension}</h3>
+                        {result.available ? (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Available
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">
+                            <X className="h-3 w-3 mr-1" />
+                            Taken
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold">KSh {result.price}/year</span>
+                        {result.available && (
+                          <Button
+                            size="sm"
+                            className="bg-gradient-to-r from-primary to-blue-600"
+                            onClick={() => handleRegisterDomain(result)}
+                          >
+                            <ShoppingCart className="h-4 w-4 mr-1" />
+                            Register
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <FlowingHeroAnimation />
 
-          {/* Trust Indicators with enhanced styling */}
-          <div className="flex flex-wrap justify-center gap-6 text-sm">
+          <div className="flex flex-wrap justify-center gap-6 text-sm mt-8">
             <div className="flex items-center bg-white/60 backdrop-blur-sm rounded-full px-4 py-2">
               <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
               <span className="font-medium">25+ Years Reliability</span>
@@ -227,7 +424,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Background decorative elements */}
         <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-crimson-200 to-blue-200 rounded-full opacity-20 animate-pulse" />
         <div
           className="absolute bottom-20 right-10 w-24 h-24 bg-gradient-to-br from-green-200 to-crimson-200 rounded-full opacity-20 animate-pulse"
@@ -239,7 +435,7 @@ export default function HomePage() {
         />
       </section>
 
-      {/* Features Section with Images */}
+      {/* Features Section */}
       <section
         id="features"
         className="py-12 md:py-20 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white animate-on-scroll opacity-0 translate-y-8 transition-all duration-700"
@@ -374,7 +570,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Enhanced Testimonials Section */}
+      {/* Testimonials Section */}
       <section
         id="testimonials"
         className="py-12 md:py-20 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white animate-on-scroll opacity-0 translate-y-8 transition-all duration-700"
@@ -453,7 +649,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Bottom feature cards section similar to Alchemy Markets */}
+      {/* Bottom Feature Cards Section */}
       <section className="py-8 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white border-t border-white/20 animate-on-scroll opacity-0 translate-y-8 transition-all duration-700">
         <div className="container mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -491,18 +687,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Mobile-Optimized Sticky CTA */}
-      <div className="fixed bottom-4 left-4 right-4 md:bottom-6 md:right-6 md:left-auto z-50">
-        <Button
-          size="lg"
-          className="w-full md:w-auto text-base md:text-lg px-6 md:px-8 py-3 md:py-4 hover:scale-105 transition-transform shadow-lg bg-gradient-to-r from-primary to-crimson-600 hover:from-primary/90 hover:to-crimson-600/90"
-          aria-label="Start domain search"
-        >
-          <Search className="mr-2 h-5 w-5" />
-          Find Your .KE Domain
-        </Button>
-      </div>
 
       {/* Trusted Agencies Section */}
       <section className="py-12 md:py-16 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white border-y border-border animate-on-scroll opacity-0 translate-y-8 transition-all duration-700">
@@ -544,6 +728,7 @@ export default function HomePage() {
             <div className="sm:col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center space-x-3 mb-4 hover:opacity-80 transition-opacity">
                 <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-6 w-auto cursor-pointer" />
+                <span className="font-bold">KeNIC</span>
               </Link>
               <p className="text-muted-foreground text-sm mb-4">
                 Kenya's official domain registry, empowering businesses to thrive online with trusted .KE domains.
@@ -603,6 +788,20 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Mobile-Optimized Sticky CTA */}
+      <div className="fixed bottom-4 left-4 right-4 md:bottom-6 md:right-6 md:left-auto z-50">
+        <Button
+          size="lg"
+          className="w-full md:w-auto text-base md:text-lg px-6 md:px-8 py-3 md:py-4 hover:scale-105 transition-transform shadow-lg bg-gradient-to-r from-primary to-crimson-600 hover:from-primary/90 hover:to-crimson-600/90"
+          onClick={handleSearch}
+          disabled={loading}
+          aria-label="Search .KE domains"
+        >
+          <Search className="mr-2 h-5 w-5" />
+          Find Your .KE Domain
+        </Button>
+      </div>
     </div>
   )
 }

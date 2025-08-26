@@ -1,16 +1,15 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react"; // Added useEffect for auth state handling
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect, useMemo } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Bell,
   Settings,
   Users,
   BookOpen,
-  Languages,
   Menu,
   X,
   Plus,
@@ -24,535 +23,530 @@ import {
   User,
   Receipt,
   Home,
-  ChevronDown,
-} from "lucide-react";
-import DomainSearch from "@/components/domain-search";
-import DomainManagement from "@/components/domain-management";
-import UserProfile from "@/components/user-profile";
-import BillingManagement from "@/components/billing-management";
-import CommunityHub from "@/components/community-hub";
-import LearningHub from "@/components/learning-hub";
-import Link from "next/link";
-import ProtectedRoute from "@/components/protected-route";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
+} from "lucide-react"
+import DomainSearch from "@/components/domain-search"
+import DomainManagement from "@/components/domain-management"
+import UserProfile from "@/components/user-profile"
+import BillingManagement from "@/components/billing-management"
+import CommunityHub from "@/components/community-hub"
+import LearningHub from "@/components/learning-hub"
+import Link from "next/link"
+import ProtectedRoute from "@/components/protected-route"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter, useSearchParams } from "next/navigation"
+import { domainApi, billingApi } from "@/lib/api"
+// import { Pie } from "react-chartjs-2";
+
+interface UserDomain {
+  _id: string;
+  name: string;
+  extension: string;
+  fullDomain: string;
+  status: "active" | "expiring" | "expired" | "pending";
+  expiryDate: string;
+  daysUntilExpiry: number;
+  autoRenew: boolean;
+  registrar: string;
+  price: number;
+}
+
+interface UserActivity {
+  _id: string;
+  action: string;
+  domain?: string;
+  type: "success" | "info" | "warning" | "error";
+  timestamp: string;
+}
+
+interface BillingSummary {
+  totalSpent: number;
+  pendingPayments: number;
+  monthlySpend: number;
+}
 
 export default function DashboardPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isSwahili, setIsSwahili] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
-  const { user, logout } = useAuth();
-  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
+  const { user, logout } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Redirect to login if user is not authenticated
+  // Real data state
+  const [userDomains, setUserDomains] = useState<UserDomain[]>([])
+  const [recentActivity, setRecentActivity] = useState<UserActivity[]>([])
+  const [billingSummary, setBillingSummary] = useState<BillingSummary>({
+    totalSpent: 0,
+    pendingPayments: 0,
+    monthlySpend: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [registrars, setRegistrars] = useState<any[]>([])
+  const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking")
+
   useEffect(() => {
-    if (!user) {
-      router.push("/login");
+    const tab = searchParams.get("tab")
+    if (tab === "search") setActiveTab("search")
+  }, [searchParams])
+
+  // Fetch real data on component mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return
+      
+      try {
+        setLoading(true)
+        const [domainsRes, activityRes, billingRes] = await Promise.all([
+          domainApi.getUserDomains(),
+          domainApi.getUserActivity(),
+          billingApi.getBillingSummary()
+        ])
+
+        setUserDomains(domainsRes.domains || [])
+        setRecentActivity(activityRes.activities || [])
+        setBillingSummary(billingRes.summary || {
+          totalSpent: 0,
+          pendingPayments: 0,
+          monthlySpend: 0
+        })
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [user, router]);
 
-  const userDomains = [
-    {
-      id: 1,
-      name: "mybusiness.co.ke",
-      status: "active",
-      expiryDate: "2025-12-15",
-      daysUntilExpiry: 120,
-      autoRenew: true,
-      registrar: "Safaricom",
-    },
-    {
-      id: 2,
-      name: "myshop.or.ke",
-      status: "expiring",
-      expiryDate: "2025-02-28",
-      daysUntilExpiry: 15,
-      autoRenew: false,
-      registrar: "KCB Bank",
-    },
-    {
-      id: 3,
-      name: "portfolio.me.ke",
-      status: "active",
-      expiryDate: "2025-08-10",
-      daysUntilExpiry: 85,
-      autoRenew: true,
-      registrar: "Equity Bank",
-    },
-  ];
+    fetchDashboardData()
+  }, [user])
 
-  const recentActivity = [
-    { action: "Domain renewed", domain: "mybusiness.co.ke", time: "2 hours ago", type: "success" },
-    { action: "DNS updated", domain: "myshop.or.ke", time: "1 day ago", type: "info" },
-    { action: "Payment processed", domain: "portfolio.me.ke", time: "3 days ago", type: "success" },
-    { action: "Expiry reminder sent", domain: "myshop.or.ke", time: "1 week ago", type: "warning" },
-  ];
+  useEffect(() => {
+    if (!user) return
+    domainApi.getRegistrars()
+      .then(res => setRegistrars(res.registrars || []))
+      .catch(() => setRegistrars([]))
+  }, [user])
+
+  useEffect(() => {
+    fetch(process.env.NEXT_PUBLIC_API_URL || "https://mili-hack.onrender.com/")
+      .then(res => setApiStatus(res.ok ? "online" : "offline"))
+      .catch(() => setApiStatus("offline"))
+  }, [])
 
   const text = {
-    en: {
-      dashboard: "Dashboard",
-      domains: "My Domains",
-      search: "Domain Search",
-      community: "Community",
-      learning: "Learning Hub",
-      settings: "Settings",
-      profile: "Profile",
-      billing: "Billing",
-      welcome: "Welcome back",
-      totalDomains: "Total Domains",
-      expiringDomains: "Expiring Soon",
-      activeServices: "Active Services",
-      monthlySpend: "Monthly Spend",
-      searchPlaceholder: "Search for available .KE domains...",
-      recentActivity: "Recent Activity",
-      quickActions: "Quick Actions",
-      renewDomain: "Renew Domain",
-      addDomain: "Add New Domain",
-      manageSettings: "Manage Settings",
-      viewAnalytics: "View Analytics",
-      backToHome: "Back to Home",
-      language: "Language",
-      english: "English",
-      swahili: "Kiswahili",
-      notifications: "Notifications",
-      logout: "Logout",
-      role: "Role",
-      company: "Company",
-    },
-    sw: {
-      dashboard: "Dashibodi",
-      domains: "Vikoa Vyangu",
-      search: "Utafutaji wa Kikoa",
-      community: "Jumuiya",
-      learning: "Kituo cha Kujifunza",
-      settings: "Mipangilio",
-      profile: "Wasifu",
-      billing: "Malipo",
-      welcome: "Karibu tena",
-      totalDomains: "Vikoa Vyote",
-      expiringDomains: "Vinapoisha Hivi Karibuni",
-      activeServices: "Huduma Zinazofanya Kazi",
-      monthlySpend: "Matumizi ya Kila Mwezi",
-      searchPlaceholder: "Tafuta vikoa vya .KE vinavyopatikana...",
-      recentActivity: "Shughuli za Hivi Karibuni",
-      quickActions: "Vitendo vya Haraka",
-      renewDomain: "Ongeza Muda wa Kikoa",
-      addDomain: "Ongeza Kikoa Kipya",
-      manageSettings: "Simamia Mipangilio",
-      viewAnalytics: "Ona Takwimu",
-      backToHome: "Rudi Nyumbani",
-      language: "Lugha",
-      english: "Kiingereza",
-      swahili: "Kiswahili",
-      notifications: "Arifa",
-      logout: "Toka",
-      role: "Jukumu",
-      company: "Kampuni",
-    },
-  };
+    dashboard: "Dashboard",
+    domains: "My Domains",
+    search: "Domain Search",
+    community: "Community",
+    learning: "Learning Hub",
+    settings: "Settings",
+    profile: "Profile",
+    billing: "Billing",
+    welcome: "Welcome back",
+    totalDomains: "Total Domains",
+    expiringDomains: "Expiring Soon",
+    activeServices: "Active Services",
+    monthlySpend: "Monthly Spend",
+    searchPlaceholder: "Search for available .KE domains...",
+    recentActivity: "Recent Activity",
+    quickActions: "Quick Actions",
+    renewDomain: "Renew Domain",
+    addDomain: "Add New Domain",
+    manageSettings: "Manage Settings",
+    viewAnalytics: "View Analytics",
+    backToHome: "Back to Home",
+    notifications: "Notifications",
+    logout: "Logout",
+  }
 
-  const t = isSwahili ? text.sw : text.en;
-
-  // Use fallback if user is not available
-  const welcomeMessage = user
-    ? `${t.welcome}, ${user.firstName} ${user.lastName}! 👋`
-    : `${t.welcome}! 👋`;
+  const welcomeMessage = user ? `${text.welcome}, ${user.firstName} ${user.lastName}! 👋` : `${text.welcome}! 👋`
 
   const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
-
-  // Show loading state while checking authentication
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-blue-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    await logout()
+    router.push("/")
   }
+
+  // Calculate dashboard stats from real data
+  const totalDomains = userDomains.length
+  const expiringDomains = userDomains.filter(d => d.status === "expiring").length
+  const activeServices = userDomains.filter(d => d.status === "active").length
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-blue-50 to-white">
-        {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
+      <div className="min-h-screen bg-gradient-to-br from-muted/20 via-background to-background">
+        <header className="bg-card/60 backdrop-blur-md border-b border-border/50 sticky top-0 z-50">
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
+              <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
               <div className="flex items-center space-x-3">
                 <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
                   <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-8 w-auto cursor-pointer" />
-                  <span className="text-xl font-bold font-serif hidden sm:block">KeNIC Dashboard</span>
+                  <span className="text-xl font-heading-bold hidden sm:block">KeNIC Dashboard</span>
                 </Link>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center space-x-2"
-                  onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                >
-                  <Languages className="h-4 w-4" />
-                  <span className="text-sm font-medium">{isSwahili ? "SW" : "EN"}</span>
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-
-                {languageDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <button
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2 ${
-                          !isSwahili ? "bg-blue-50 text-blue-600" : ""
-                        }`}
-                        onClick={() => {
-                          setIsSwahili(false);
-                          setLanguageDropdownOpen(false);
-                        }}
-                      >
-                        <span className="text-lg">🇬🇧</span>
-                        <span>{t.english}</span>
-                      </button>
-                      <button
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2 ${
-                          isSwahili ? "bg-blue-50 text-blue-600" : ""
-                        }`}
-                        onClick={() => {
-                          setIsSwahili(true);
-                          setLanguageDropdownOpen(false);
-                        }}
-                      >
-                        <span className="text-lg">🇰🇪</span>
-                        <span>{t.swahili}</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Button variant="ghost" size="sm" className="relative" title={t.notifications}>
+              <Button variant="ghost" size="sm" className="relative hover:bg-muted/50" title={text.notifications}>
                 <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-red-500">3</Badge>
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-destructive animate-float-gentle">
+                  3
+                </Badge>
               </Button>
 
-              <Button variant="ghost" size="sm" asChild title={t.backToHome}>
+              <Button variant="ghost" size="sm" asChild title={text.backToHome} className="hover:bg-muted/50">
                 <Link href="/">
                   <Home className="h-5 w-5" />
                 </Link>
               </Button>
 
-              <Button variant="ghost" size="sm" onClick={handleLogout} title={t.logout}>
-                <span className="text-sm">{t.logout}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                title={text.logout}
+                className="hover:bg-muted/50 font-body-medium"
+              >
+                <span className="text-sm">Logout</span>
               </Button>
 
-              <Avatar className="h-8 w-8 cursor-pointer" onClick={() => setActiveTab("profile")}>
+              <Avatar
+                className="h-8 w-8 cursor-pointer ring-2 ring-primary/20 hover:ring-primary/40 transition-all"
+                onClick={() => setActiveTab("profile")}
+              >
                 <AvatarImage src="/customer-avatar-sarah.png" />
-                <AvatarFallback>
-                  {user?.firstName && user?.lastName
-                    ? `${user.firstName[0]}${user.lastName[0]}`
-                    : "GU"}
+                <AvatarFallback className="font-body-medium">
+                  {user && user.firstName && user.lastName ? `${user.firstName[0]}${user.lastName[0]}` : "JM"}
                 </AvatarFallback>
               </Avatar>
             </div>
           </div>
         </header>
 
-        {languageDropdownOpen && (
-          <div className="fixed inset-0 z-40" onClick={() => setLanguageDropdownOpen(false)} />
-        )}
-
         <div className="flex">
-          {/* Sidebar */}
           <aside
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            } fixed inset-y-0 left-0 z-40 w-64 bg-white/90 backdrop-blur-md border-r border-border transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 pt-16 lg:pt-0`}
+            } fixed inset-y-0 left-0 z-40 w-64 bg-card/60 backdrop-blur-md border-r border-border/50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 pt-16 lg:pt-0`}
           >
             <nav className="p-4 space-y-2">
-              <Button variant="ghost" className="w-full justify-start" asChild>
+              <Button variant="ghost" className="w-full justify-start hover:bg-muted/50 font-body" asChild>
                 <Link href="/">
                   <Home className="mr-3 h-4 w-4" />
-                  {t.backToHome}
+                  {text.backToHome}
                 </Link>
               </Button>
 
               <Button
                 variant={activeTab === "overview" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "overview" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("overview")}
               >
                 <Activity className="mr-3 h-4 w-4" />
-                {t.dashboard}
+                {text.dashboard}
               </Button>
 
               <Button
                 variant={activeTab === "domains" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "domains" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("domains")}
               >
                 <Globe className="mr-3 h-4 w-4" />
-                {t.domains}
+                {text.domains}
               </Button>
               <Button
                 variant={activeTab === "search" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "search" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("search")}
               >
                 <Search className="mr-3 h-4 w-4" />
-                {t.search}
+                {text.search}
               </Button>
               <Button
                 variant={activeTab === "billing" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "billing" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("billing")}
               >
                 <Receipt className="mr-3 h-4 w-4" />
-                {t.billing}
+                {text.billing}
               </Button>
               <Button
                 variant={activeTab === "community" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "community" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("community")}
               >
                 <Users className="mr-3 h-4 w-4" />
-                {t.community}
+                {text.community}
               </Button>
               <Button
                 variant={activeTab === "learning" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "learning" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("learning")}
               >
                 <BookOpen className="mr-3 h-4 w-4" />
-                {t.learning}
+                {text.learning}
               </Button>
               <Button
                 variant={activeTab === "profile" ? "default" : "ghost"}
-                className="w-full justify-start"
+                className={`w-full justify-start font-body ${activeTab === "profile" ? "btn-primary" : "hover:bg-muted/50"}`}
                 onClick={() => setActiveTab("profile")}
               >
                 <User className="mr-3 h-4 w-4" />
-                {t.profile}
+                {text.profile}
               </Button>
-              <Button variant="ghost" className="w-full justify-start">
+              <Button variant="ghost" className="w-full justify-start hover:bg-muted/50 font-body">
                 <Settings className="mr-3 h-4 w-4" />
-                {t.settings}
+                {text.settings}
               </Button>
             </nav>
 
             <div className="p-4 mt-8">
-              <Card className="bg-gradient-to-r from-primary/10 to-blue-500/10">
+              <Card className="card-glass border-0">
                 <CardContent className="p-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">3</div>
-                    <div className="text-sm text-muted-foreground">{t.totalDomains}</div>
+                    <div className="text-2xl font-heading-bold text-primary">{totalDomains}</div>
+                    <div className="text-sm text-muted-foreground font-body">{text.totalDomains}</div>
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            <div className="p-4 text-xs text-muted-foreground flex items-center space-x-2">
+              <span>API Status:</span>
+              <span className={`w-2 h-2 rounded-full ${apiStatus === "online" ? "bg-green-500" : "bg-red-500"}`}></span>
+              <span>{apiStatus}</span>
             </div>
           </aside>
 
-          {/* Main Content */}
           <main className="flex-1 p-4 lg:p-6 lg:ml-0">
-            {/* Welcome Section */}
-            <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold font-serif mb-2">{welcomeMessage}</h1>
-              <p className="text-muted-foreground">
-                {isSwahili
-                  ? "Simamia vikoa vyako vya .KE na upanue biashara yako mtandaoni."
-                  : "Manage your .KE domains and grow your online presence."}
+            <div className="mb-8 animate-gentle-fade-in">
+              <h1 className="text-3xl md:text-4xl font-heading-bold mb-3">{welcomeMessage}</h1>
+              <p className="text-muted-foreground font-body text-lg">
+                Manage your .KE domains and grow your online presence.
               </p>
-              {/* Display Role and Company */}
-              <div className="mt-2 text-sm text-muted-foreground">
-                <p>
-                  <span className="font-medium">{t.role}:</span>{" "}
-                  {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "N/A"}
-                </p>
-                {user.company && (
-                  <p>
-                    <span className="font-medium">{t.company}:</span> {user.company}
-                  </p>
-                )}
-              </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card>
-                <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{t.totalDomains}</p>
-                      <p className="text-2xl font-bold">3</p>
+                      <p className="text-sm text-muted-foreground font-body">{text.totalDomains}</p>
+                      <p className="text-3xl font-heading-bold">{totalDomains}</p>
                     </div>
-                    <Globe className="h-8 w-8 text-primary" />
+                    <Globe className="h-8 w-8 text-primary animate-float-gentle" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
+              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{t.expiringDomains}</p>
-                      <p className="text-2xl font-bold text-orange-600">1</p>
+                      <p className="text-sm text-muted-foreground font-body">{text.expiringDomains}</p>
+                      <p className="text-3xl font-heading-bold text-secondary">{expiringDomains}</p>
                     </div>
-                    <AlertTriangle className="h-8 w-8 text-orange-600" />
+                    <AlertTriangle className="h-8 w-8 text-secondary animate-float-gentle" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
+              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{t.activeServices}</p>
-                      <p className="text-2xl font-bold text-green-600">5</p>
+                      <p className="text-sm text-muted-foreground font-body">{text.activeServices}</p>
+                      <p className="text-3xl font-heading-bold text-green-600">{activeServices}</p>
                     </div>
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                    <CheckCircle className="h-8 w-8 text-green-600 animate-float-gentle" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
+              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{t.monthlySpend}</p>
-                      <p className="text-2xl font-bold">KSh 2,500</p>
+                      <p className="text-sm text-muted-foreground font-body">{text.monthlySpend}</p>
+                      <p className="text-3xl font-heading-bold">KSh {billingSummary.monthlySpend.toLocaleString()}</p>
                     </div>
-                    <DollarSign className="h-8 w-8 text-blue-600" />
+                    <DollarSign className="h-8 w-8 text-blue-600 animate-float-gentle" />
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-glass border-2 border-dashed border-primary/40 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                onClick={() => setActiveTab("search")}
+                tabIndex={0}
+                aria-label="Register a new domain"
+              >
+                <CardContent className="p-6 flex flex-col items-center justify-center h-full">
+                  <Plus className="h-10 w-10 text-primary mb-2 animate-bounce" />
+                  <p className="text-lg font-heading-bold text-primary">Register New Domain</p>
+                  <p className="text-sm text-muted-foreground mt-1">Find and secure your next .KE domain</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Dynamic Content Based on Active Tab */}
             {activeTab === "overview" && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Domain Status Overview */}
-                <div className="lg:col-span-2">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Globe className="mr-2 h-5 w-5" />
-                        Domain Portfolio
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {userDomains.map((domain) => (
-                          <div
-                            key={domain.id}
-                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                            onClick={() => setActiveTab("domains")}
-                          >
-                            <div className="flex items-center space-x-4">
-                              <div
-                                className={`w-3 h-3 rounded-full ${
-                                  domain.status === "active"
-                                    ? "bg-green-500"
-                                    : domain.status === "expiring"
-                                      ? "bg-orange-500"
-                                      : "bg-red-500"
-                                }`}
-                              />
-                              <div>
-                                <p className="font-medium">{domain.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Expires: {domain.expiryDate} ({domain.daysUntilExpiry} days)
-                                </p>
+              <>
+                <div className="mb-6">
+                  <input
+                    type="text"
+                    placeholder="Quick search for a .KE domain..."
+                    className="w-full px-4 py-3 rounded-lg border border-border focus:ring-2 focus:ring-primary/40 font-body text-lg shadow-sm"
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && e.currentTarget.value) {
+                        setActiveTab("search")
+                        // Optionally, pass the search value to DomainSearch via context or props
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2">
+                    <Card className="card-glass border-0">
+                      <CardHeader>
+                        <CardTitle className="flex items-center font-heading">
+                          <Globe className="mr-3 h-5 w-5" />
+                          Domain Portfolio
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {loading ? (
+                          <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="animate-pulse">
+                                <div className="h-16 bg-gray-200 rounded-lg"></div>
                               </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge
-                                variant={domain.status === "active" ? "default" : "destructive"}
-                                className="capitalize"
+                            ))}
+                          </div>
+                        ) : userDomains.length > 0 ? (
+                          <div className="space-y-4">
+                            {userDomains.slice(0, 5).map((domain) => (
+                              <div
+                                key={domain._id}
+                                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                                onClick={() => setActiveTab("domains")}
                               >
-                                {domain.status}
-                              </Badge>
-                            </div>
+                                <div className="flex items-center space-x-4">
+                                  <div
+                                    className={`w-3 h-3 rounded-full ${
+                                      domain.status === "active"
+                                        ? "bg-green-500"
+                                        : domain.status === "expiring"
+                                          ? "bg-orange-500"
+                                          : "bg-red-500"
+                                    }`}
+                                  />
+                                  <div>
+                                    <p className="font-medium">{domain.fullDomain}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Expires: {new Date(domain.expiryDate).toLocaleDateString()} ({domain.daysUntilExpiry} days)
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Badge
+                                    variant={domain.status === "active" ? "default" : "destructive"}
+                                    className="capitalize"
+                                  >
+                                    {domain.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Quick Actions & Recent Activity */}
-                <div className="space-y-4">
-                  {/* Quick Actions */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{t.quickActions}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <Button
-                        className="w-full justify-start bg-transparent"
-                        variant="outline"
-                        onClick={() => setActiveTab("search")}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t.addDomain}
-                      </Button>
-                      <Button
-                        className="w-full justify-start bg-transparent"
-                        variant="outline"
-                        onClick={() => setActiveTab("profile")}
-                      >
-                        <Settings className="mr-2 h-4 w-4" />
-                        {t.manageSettings}
-                      </Button>
-                      <Button className="w-full justify-start bg-transparent" variant="outline">
-                        <TrendingUp className="mr-2 h-4 w-4" />
-                        {t.viewAnalytics}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Recent Activity */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{t.recentActivity}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {recentActivity.map((activity, index) => (
-                          <div key={index} className="flex items-start space-x-3">
-                            <div
-                              className={`w-2 h-2 rounded-full mt-2 ${
-                                activity.type === "success"
-                                  ? "bg-green-500"
-                                  : activity.type === "warning"
-                                    ? "bg-orange-500"
-                                    : "bg-blue-500"
-                              }`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{activity.action}</p>
-                              <p className="text-xs text-muted-foreground">{activity.domain}</p>
-                              <p className="text-xs text-muted-foreground">{activity.time}</p>
-                            </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No domains registered yet</p>
+                            <Button 
+                              className="mt-4" 
+                              onClick={() => setActiveTab("search")}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Register Your First Domain
+                            </Button>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="space-y-6">
+                    <Card className="card-glass border-0">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-heading">{text.quickActions}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Button
+                          className="w-full justify-start btn-glass font-body"
+                          onClick={() => setActiveTab("search")}
+                        >
+                          <Plus className="mr-3 h-4 w-4" />
+                          {text.addDomain}
+                        </Button>
+                        <Button
+                          className="w-full justify-start btn-glass font-body"
+                          onClick={() => setActiveTab("profile")}
+                        >
+                          <Settings className="mr-3 h-4 w-4" />
+                          {text.manageSettings}
+                        </Button>
+                        <Button className="w-full justify-start btn-glass font-body">
+                          <TrendingUp className="mr-3 h-4 w-4" />
+                          {text.viewAnalytics}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="card-glass border-0">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-heading">{text.recentActivity}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {loading ? (
+                          <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="animate-pulse">
+                                <div className="h-12 bg-gray-200 rounded"></div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : recentActivity.length > 0 ? (
+                          <div className="space-y-4">
+                            {recentActivity.slice(0, 5).map((activity) => (
+                              <div key={activity._id} className="flex items-start space-x-3">
+                                <div className="mt-2">
+                                  {activity.type === "success" && <CheckCircle className="h-4 w-4 text-green-500" />}
+                                  {activity.type === "warning" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                                  {activity.type === "error" && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                                  {activity.type === "info" && <Info className="h-4 w-4 text-blue-500" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium">{activity.action}</p>
+                                  {activity.domain && (
+                                    <p className="text-xs text-muted-foreground">{activity.domain}</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(activity.timestamp).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground">
+                            <p className="text-sm">No recent activity</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {activeTab === "domains" && <DomainManagement />}
@@ -561,14 +555,69 @@ export default function DashboardPage() {
             {activeTab === "profile" && <UserProfile />}
             {activeTab === "community" && <CommunityHub />}
             {activeTab === "learning" && <LearningHub />}
+
+            {/* Accredited Registrars Section */}
+            {activeTab === "overview" && (
+              <Card className="card-glass border-0 mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center font-heading">
+                    <Globe className="mr-3 h-5 w-5" />
+                    Accredited Registrars
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {registrars.length === 0 ? (
+                      <div className="text-muted-foreground">No registrars found.</div>
+                    ) : (
+                      registrars.slice(0, 6).map((reg) => (
+                        <div key={reg._id} className="p-3 rounded-lg bg-muted flex flex-col items-center shadow-sm">
+                          <img src={reg.logoUrl || "/default-registrar.png"} alt={reg.name} className="h-8 w-8 mb-2" />
+                          <span className="font-medium">{reg.name}</span>
+                          <span className="text-xs text-muted-foreground">{reg.website}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Billing Overview Card */}
+            {activeTab === "overview" && (
+              <Card className="card-glass border-0 mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center font-heading">
+                    <DollarSign className="mr-3 h-5 w-5" />
+                    Billing Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center">
+                    {/* Replace with a real chart if you add Chart.js */}
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-primary/20 to-accent/30 flex items-center justify-center mb-2">
+                      <span className="text-2xl font-bold text-primary">
+                        KSh {billingSummary.totalSpent.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between w-full text-sm text-muted-foreground">
+                      <span>Pending: KSh {billingSummary.pendingPayments.toLocaleString()}</span>
+                      <span>Monthly: KSh {billingSummary.monthlySpend.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </main>
         </div>
 
-        {/* Mobile overlay */}
         {sidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
         )}
       </div>
     </ProtectedRoute>
-  );
+  )
 }
