@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Bell,
   Settings,
@@ -24,20 +24,25 @@ import {
   Receipt,
   Home,
   ShoppingCart,
-} from "lucide-react"
-import Link from "next/link"
-import { getCart as fetchCart } from "@/lib/cart"
-import DomainSearch from "@/components/domain-search"
-import DomainManagement from "@/components/domain-management"
-import UserProfile from "@/components/user-profile"
-import BillingManagement from "@/components/billing-management"
-import CommunityHub from "@/components/community-hub"
-import LearningHub from "@/components/learning-hub"
-import ProtectedRoute from "@/components/protected-route"
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter, useSearchParams } from "next/navigation"
-import { domainApi, billingApi } from "@/lib/api"
-// import { Pie } from "react-chartjs-2";
+  Info,
+} from "lucide-react";
+import Link from "next/link";
+import { getCart as fetchCart } from "@/lib/cart";
+import DomainSearch from "@/components/domain-search";
+import DomainManagement from "@/components/domain-management";
+import UserProfile from "@/components/user-profile";
+import BillingManagement from "@/components/billing-management";
+import CommunityHub from "@/components/community-hub";
+import LearningHub from "@/components/learning-hub";
+import ProtectedRoute from "@/components/protected-route";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter, useSearchParams } from "next/navigation";
+import { domainApi, billingApi } from "@/lib/api";
+import { Pie } from "react-chartjs-2";
+import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
+
+// Register Chart.js components
+Chart.register(ArcElement, Tooltip, Legend);
 
 interface UserDomain {
   _id: string;
@@ -67,94 +72,95 @@ interface BillingSummary {
 }
 
 export default function DashboardPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("overview")
-  const { user, logout } = useAuth()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Cart count state
-  const [cartCount, setCartCount] = useState<number>(0)
+  const [cartCount, setCartCount] = useState<number>(0);
 
   const refreshCartCount = async () => {
     try {
       if (!user?.id) {
-        setCartCount(0)
-        return
+        setCartCount(0);
+        return;
       }
-      const res = await fetchCart(user.id)
-      const items = res?.cart || res?.items || []
-      setCartCount(Array.isArray(items) ? items.length : 0)
+      const res = await fetchCart(user.id);
+      const items = res?.cart || res?.items || [];
+      setCartCount(Array.isArray(items) ? items.length : 0);
     } catch (err) {
-      console.error("Failed to load cart count:", err)
-      setCartCount(0)
+      console.error("Failed to load cart count:", err);
+      setCartCount(0);
     }
-  }
+  };
 
   useEffect(() => {
-    if (!user) return
-    refreshCartCount()
-  }, [user])
+    if (!user) return;
+    refreshCartCount();
+  }, [user]);
 
   // Real data state
-  const [userDomains, setUserDomains] = useState<UserDomain[]>([])
-  const [recentActivity, setRecentActivity] = useState<UserActivity[]>([])
+  const [userDomains, setUserDomains] = useState<UserDomain[]>([]);
+  const [recentActivity, setRecentActivity] = useState<UserActivity[]>([]);
   const [billingSummary, setBillingSummary] = useState<BillingSummary>({
     totalSpent: 0,
     pendingPayments: 0,
-    monthlySpend: 0
-  })
-  const [loading, setLoading] = useState(true)
-  const [registrars, setRegistrars] = useState<any[]>([])
-  const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking")
+    monthlySpend: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [registrars, setRegistrars] = useState<any[]>([]);
+  const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
 
   useEffect(() => {
-    const tab = searchParams.get("tab")
-    if (tab === "search") setActiveTab("search")
-  }, [searchParams])
+    const tab = searchParams.get("tab");
+    if (tab === "search") setActiveTab("search");
+  }, [searchParams]);
 
-  // Fetch real data on component mount
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!user) return
-      
+      if (!user) return;
       try {
-        setLoading(true)
+        setLoading(true);
         const [domainsRes, activityRes, billingRes] = await Promise.all([
           domainApi.getUserDomains(),
           domainApi.getUserActivity(),
-          billingApi.getBillingSummary()
-        ])
+          billingApi.getBillingSummary(),
+        ]);
 
-        setUserDomains(domainsRes.domains || [])
-        setRecentActivity(activityRes.activities || [])
-        setBillingSummary(billingRes.summary || {
-          totalSpent: 0,
-          pendingPayments: 0,
-          monthlySpend: 0
-        })
+        setUserDomains(domainsRes.domains || []);
+        setRecentActivity(activityRes.activities || []);
+        setBillingSummary(
+          billingRes.summary || {
+            totalSpent: 0,
+            pendingPayments: 0,
+            monthlySpend: 0,
+          }
+        );
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error)
+        console.error("Failed to fetch dashboard data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchDashboardData()
-  }, [user])
+    fetchDashboardData();
+  }, [user]);
 
   useEffect(() => {
-    if (!user) return
-    domainApi.getRegistrars()
-      .then(res => setRegistrars(res.registrars || []))
-      .catch(() => setRegistrars([]))
-  }, [user])
+    if (!user) return;
+    domainApi
+      .getRegistrars()
+      .then((res) => setRegistrars(res.registrars || []))
+      .catch(() => setRegistrars([]));
+  }, [user]);
 
   useEffect(() => {
     fetch(process.env.NEXT_PUBLIC_API_URL || "https://mili-hack.onrender.com/")
-      .then(res => setApiStatus(res.ok ? "online" : "offline"))
-      .catch(() => setApiStatus("offline"))
-  }, [])
+      .then((res) => setApiStatus(res.ok ? "online" : "offline"))
+      .catch(() => setApiStatus("offline"));
+  }, []);
 
   const text = {
     dashboard: "Dashboard",
@@ -180,86 +186,123 @@ export default function DashboardPage() {
     backToHome: "Back to Home",
     notifications: "Notifications",
     logout: "Logout",
-  }
+  };
 
-  const welcomeMessage = user ? `${text.welcome}, ${user.firstName} ${user.lastName}! 👋` : `${text.welcome}! 👋`
+  const welcomeMessage = user
+    ? `${text.welcome}, ${user.firstName} ${user.lastName}! 👋`
+    : `${text.welcome}! 👋`;
 
   const handleLogout = async () => {
-    await logout()
-    router.push("/")
-  }
+    await logout();
+    router.push("/");
+  };
 
-  // Calculate dashboard stats from real data
-  const totalDomains = userDomains.length
-  const expiringDomains = userDomains.filter(d => d.status === "expiring").length
-  const activeServices = userDomains.filter(d => d.status === "active").length
+  // Calculate dashboard stats
+  const totalDomains = userDomains.length;
+  const expiringDomains = userDomains.filter((d) => d.status === "expiring").length;
+  const activeServices = userDomains.filter((d) => d.status === "active").length;
 
-  // try local /public/logos/* first, fallback to registrar logoUrl or default image
+  // Pie chart data for billing overview
+  const pieChartData = {
+    labels: ["Total Spent", "Pending Payments", "Monthly Spend"],
+    datasets: [
+      {
+        data: [
+          billingSummary.totalSpent,
+          billingSummary.pendingPayments,
+          billingSummary.monthlySpend,
+        ],
+        backgroundColor: ["#22C55E", "#EF4444", "#6B7280"],
+        borderColor: ["#fff", "#fff", "#fff"],
+        borderWidth: 2,
+      },
+    ],
+  };
+
   const getLocalLogo = (reg: any) => {
-    const base = (reg.slug || reg.name || "").toString().toLowerCase()
-    const slug = base.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
-    return `/logos/${slug}.png`
-  }
+    const base = (reg.slug || reg.name || "").toString().toLowerCase();
+    const slug = base.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return `/logos/${slug}.png`;
+  };
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-muted/20 via-background to-background">
-        <header className="bg-card/60 backdrop-blur-md border-b border-border/50 sticky top-0 z-50">
-          <div className="flex items-center justify-between px-4 py-4">
+      <div className="min-h-screen bg-gray-100 dark:bg-neutral transition-colors duration-300">
+        <header className="bg-white dark:bg-neutral/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden hover:bg-gray-100 dark:hover:bg-neutral/70"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
-              <div className="flex items-center space-x-3">
-                <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-                  <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-8 w-auto cursor-pointer" />
-                  <span className="text-xl font-heading-bold hidden sm:block">KeNIC Dashboard</span>
-                </Link>
-              </div>
+              <Link href="/" className="flex items-center space-x-3 hover:opacity-90 transition-opacity">
+                <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-8 w-auto" />
+                <span className="text-xl font-heading-bold hidden sm:block dark:text-gray-100">KeNIC Dashboard</span>
+              </Link>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative hover:bg-muted/50" title={text.notifications}>
-                <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-destructive animate-float-gentle">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative hover:bg-gray-100 dark:hover:bg-neutral/70"
+                title={text.notifications}
+              >
+                <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-red-500 text-white">
                   3
                 </Badge>
               </Button>
 
-              <Button variant="ghost" size="sm" asChild title={text.backToHome} className="hover:bg-green-100">
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                title={text.backToHome}
+                className="hover:bg-green-100 dark:hover:bg-green-900/50"
+              >
                 <Link href="/">
-                  <Home className="h-5 w-5" />
+                  <Home className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                 </Link>
               </Button>
 
-              {/* Cart button */}
-              <Button variant="ghost" size="sm" asChild title="Cart" className="relative hover:bg-muted/50">
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                title="Cart"
+                className="relative hover:bg-gray-100 dark:hover:bg-neutral/70"
+              >
                 <Link href="/cart" className="relative inline-flex items-center">
-                  <ShoppingCart className="h-5 w-5" />
+                  <ShoppingCart className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                   {cartCount > 0 && (
-                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs bg-destructive animate-float-gentle">
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs bg-red-500 text-white">
                       {cartCount}
                     </Badge>
                   )}
                 </Link>
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
                 title={text.logout}
-                className="hover:bg-muted/50 font-body-medium"
+                className="hover:bg-gray-100 dark:hover:bg-neutral/70 font-body text-gray-600 dark:text-gray-300"
               >
-                <span className="text-sm">Logout</span>
+                {text.logout}
               </Button>
 
               <Avatar
-                className="h-8 w-8 cursor-pointer ring-2 ring-primary/20 hover:ring-primary/40 transition-all"
+                className="h-9 w-9 cursor-pointer ring-2 ring-green-500/30 dark:ring-green-500/50 hover:ring-green-500/50 dark:hover:ring-green-500/70 transition-all"
                 onClick={() => setActiveTab("profile")}
               >
                 <AvatarImage src="/customer-avatar-sarah.png" />
-                <AvatarFallback className="font-body-medium">
+                <AvatarFallback className="font-body text-gray-600 dark:text-gray-300">
                   {user && user.firstName && user.lastName ? `${user.firstName[0]}${user.lastName[0]}` : "JM"}
                 </AvatarFallback>
               </Avatar>
@@ -267,182 +310,137 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <div className="flex">
+        <div className="flex max-w-7xl mx-auto">
           <aside
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            } fixed inset-y-0 left-0 z-40 w-64 bg-card/60 backdrop-blur-md border-r border-border/50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 pt-16 lg:pt-0`}
+            } fixed inset-y-0 left-0 z-40 w-64 bg-white/90 dark:bg-neutral/90 backdrop-blur-md border-r border-gray-200/50 dark:border-gray-700/50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 pt-16 lg:pt-0 sticky top-0 h-screen`}
           >
-            <nav className="p-4 space-y-2">
-              <Button variant="ghost" className="w-full justify-start hover:bg-green-100 font-body" asChild>
+            <nav className="p-4 space-y-1">
+              <Button
+                variant="ghost"
+                className="w-full justify-start hover:bg-green-100 dark:hover:bg-green-900/50 font-body text-gray-700 dark:text-gray-200"
+                asChild
+              >
                 <Link href="/">
                   <Home className="mr-3 h-4 w-4" />
                   {text.backToHome}
                 </Link>
               </Button>
 
-              <Button
-                variant={activeTab === "overview" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "overview" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("overview")}
-              >
-                <Activity className="mr-3 h-4 w-4" />
-                {text.dashboard}
-              </Button>
-
-              <Button
-                variant={activeTab === "domains" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "domains" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("domains")}
-              >
-                <Globe className="mr-3 h-4 w-4" />
-                {text.domains}
-              </Button>
-              <Button
-                variant={activeTab === "search" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "search" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("search")}
-              >
-                <Search className="mr-3 h-4 w-4" />
-                {text.search}
-              </Button>
-              <Button
-                variant={activeTab === "billing" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "billing" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("billing")}
-              >
-                <Receipt className="mr-3 h-4 w-4" />
-                {text.billing}
-              </Button>
-              <Button
-                variant={activeTab === "community" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "community" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("community")}
-              >
-                <Users className="mr-3 h-4 w-4" />
-                {text.community}
-              </Button>
-              <Button
-                variant={activeTab === "learning" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "learning" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("learning")}
-              >
-                <BookOpen className="mr-3 h-4 w-4" />
-                {text.learning}
-              </Button>
-              <Button
-                variant={activeTab === "profile" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "profile" ? "btn-primary" : "hover:bg-green-100"}`}
-                onClick={() => setActiveTab("profile")}
-              >
-                <User className="mr-3 h-4 w-4" />
-                {text.profile}
-              </Button>
-              <Button variant="ghost" className="w-full justify-start hover:bg-green-100 font-body">
-                <Settings className="mr-3 h-4 w-4" />
-                {text.settings}
-              </Button>
+              {[
+                { tab: "overview", icon: Activity, label: text.dashboard },
+                { tab: "domains", icon: Globe, label: text.domains },
+                { tab: "search", icon: Search, label: text.search },
+                { tab: "billing", icon: Receipt, label: text.billing },
+                { tab: "community", icon: Users, label: text.community },
+                { tab: "learning", icon: BookOpen, label: text.learning },
+                { tab: "profile", icon: User, label: text.profile },
+                { tab: "settings", icon: Settings, label: text.settings },
+              ].map(({ tab, icon: Icon, label }) => (
+                <Button
+                  key={tab}
+                  variant={activeTab === tab ? "default" : "ghost"}
+                  className={`w-full justify-start font-body text-gray-700 dark:text-gray-200 ${
+                    activeTab === tab
+                      ? "btn-primary"
+                      : "hover:bg-green-100 dark:hover:bg-green-900/50"
+                  }`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  <Icon className="mr-3 h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
             </nav>
 
-            <div className="p-4 mt-8">
-              <Card className="card-glass border-0">
-                <CardContent className="p-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-heading-bold text-primary">{totalDomains}</div>
-                    <div className="text-sm text-muted-foreground font-body">{text.totalDomains}</div>
-                  </div>
+            <div className="p-4 mt-auto">
+              <Card className="card-glass">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-heading-bold text-green-500 dark:text-green-400">{totalDomains}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 font-body">{text.totalDomains}</div>
                 </CardContent>
               </Card>
-            </div>
-
-            <div className="p-4 text-xs text-muted-foreground flex items-center space-x-2">
-              <span>API Status:</span>
-              <span className={`w-2 h-2 rounded-full ${apiStatus === "online" ? "bg-green-500" : "bg-red-500"}`}></span>
-              <span>{apiStatus}</span>
+              <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-2">
+                <span>API Status:</span>
+                <span
+                  className={`w-2 h-2 rounded-full ${apiStatus === "online" ? "bg-green-500" : "bg-red-500"}`}
+                ></span>
+                <span>{apiStatus}</span>
+              </div>
             </div>
           </aside>
 
-          <main className="flex-1 p-4 lg:p-6 lg:ml-0">
-            <div className="mb-8 animate-gentle-fade-in">
-              <h1 className="text-3xl md:text-4xl font-heading-bold mb-3">{welcomeMessage}</h1>
-              <p className="text-muted-foreground font-body text-lg">
+          <main className="flex-1 p-4 lg:p-6">
+            <div className="mb-8 animate-fade-in">
+              <h1 className="text-3xl md:text-4xl font-heading-bold text-gray-800 dark:text-gray-100 mb-2">
+                {welcomeMessage}
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 font-body text-base leading-relaxed">
                 Manage your .KE domains and grow your online presence.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {[
+                {
+                  title: text.totalDomains,
+                  value: totalDomains,
+                  icon: Globe,
+                  color: "text-green-500",
+                },
+                {
+                  title: text.expiringDomains,
+                  value: expiringDomains,
+                  icon: AlertTriangle,
+                  color: "text-red-500",
+                },
+                {
+                  title: text.activeServices,
+                  value: activeServices,
+                  icon: CheckCircle,
+                  color: "text-green-600",
+                },
+                {
+                  title: text.monthlySpend,
+                  value: `KSh ${billingSummary.monthlySpend.toLocaleString()}`,
+                  icon: DollarSign,
+                  color: "text-blue-600",
+                },
+              ].map(({ title, value, icon: Icon, color }, index) => (
+                <Card
+                  key={index}
+                  className="card-glass hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                >
+                  <CardContent className="p-6 flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground font-body">{text.totalDomains}</p>
-                      <p className="text-3xl font-heading-bold">{totalDomains}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-body">{title}</p>
+                      <p className={`text-2xl font-heading-bold ${color}`}>{value}</p>
                     </div>
-                    <Globe className="h-8 w-8 text-primary animate-float-gentle" />
-                  </div>
-                </CardContent>
-              </Card>
+                    <Icon className={`h-8 w-8 ${color} animate-float-gentle`} />
+                  </CardContent>
+                </Card>
+              ))}
 
-              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground font-body">{text.expiringDomains}</p>
-                      <p className="text-3xl font-heading-bold text-secondary">{expiringDomains}</p>
-                    </div>
-                    <AlertTriangle className="h-8 w-8 text-secondary animate-float-gentle" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground font-body">{text.activeServices}</p>
-                      <p className="text-3xl font-heading-bold text-green-600">{activeServices}</p>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-green-600 animate-float-gentle" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="card-glass border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground font-body">{text.monthlySpend}</p>
-                      <p className="text-3xl font-heading-bold">KSh {billingSummary.monthlySpend.toLocaleString()}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-blue-600 animate-float-gentle" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Register New Domain CTA */}
-              <Card className="card-glass border-2 border-dashed border-primary/40 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-                onClick={() => setActiveTab("search")}
-                tabIndex={0}
-                aria-label="Register a new domain"
-              >
-                <CardContent className="p-6 flex flex-col items-center justify-center h-full">
-                  <Plus className="h-10 w-10 text-primary mb-2 animate-bounce" />
-                  <p className="text-lg font-heading-bold text-primary">Register New Domain</p>
-                  <p className="text-sm text-muted-foreground mt-1">Find and secure your next .KE domain</p>
-                </CardContent>
-              </Card>
-
-              {/* New: Create Website CTA (opens sandbox with a default slug) */}
               <Card
-                className="card-glass border-2 border-dashed border-accent/30 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-                onClick={() => router.push("/sandbox/website")}
-                tabIndex={0}
-                aria-label="Create your own website with zero code"
+                className="card-glass border-2 border-dashed border-green-500/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                onClick={() => setActiveTab("search")}
               >
                 <CardContent className="p-6 flex flex-col items-center justify-center h-full">
-                  <Globe className="h-10 w-10 text-accent mb-2 animate-pulse" />
-                  <p className="text-lg font-heading-bold text-accent">Create your own Website</p>
-                  <p className="text-sm text-muted-foreground mt-1">With zero code — launch instantly</p>
+                  <Plus className="h-8 w-8 text-green-500 mb-3 animate-bounce" />
+                  <p className="text-lg font-heading-bold text-green-500 dark:text-green-400">Register New Domain</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Find and secure your next .KE domain</p>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="card-glass border-2 border-dashed border-red-500/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                onClick={() => router.push("/sandbox/website")}
+              >
+                <CardContent className="p-6 flex flex-col items-center justify-center h-full">
+                  <Globe className="h-8 w-8 text-red-500 mb-3 animate-pulse" />
+                  <p className="text-lg font-heading-bold text-red-500 dark:text-red-400">Create your own Website</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">With zero code — launch instantly</p>
                 </CardContent>
               </Card>
             </div>
@@ -453,22 +451,21 @@ export default function DashboardPage() {
                   <input
                     type="text"
                     placeholder="Quick search for a .KE domain..."
-                    className="w-full px-4 py-3 rounded-lg border border-border focus:ring-2 focus:ring-primary/40 font-body text-lg shadow-sm"
-                    onKeyDown={e => {
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-neutral/50 focus:ring-2 focus:ring-green-500/40 font-body text-base shadow-sm transition-all"
+                    onKeyDown={(e) => {
                       if (e.key === "Enter" && e.currentTarget.value) {
-                        setActiveTab("search")
-                        // Optionally, pass the search value to DomainSearch via context or props
+                        setActiveTab("search");
                       }
                     }}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
-                    <Card className="card-glass border-0">
+                    <Card className="card-glass">
                       <CardHeader>
-                        <CardTitle className="flex items-center font-heading">
-                          <Globe className="mr-3 h-5 w-5" />
+                        <CardTitle className="flex items-center font-heading text-xl text-gray-800 dark:text-gray-100">
+                          <Globe className="mr-2 h-5 w-5" />
                           Domain Portfolio
                         </CardTitle>
                       </CardHeader>
@@ -477,16 +474,18 @@ export default function DashboardPage() {
                           <div className="space-y-4">
                             {[1, 2, 3].map((i) => (
                               <div key={i} className="animate-pulse">
-                                <div className="h-16 bg-gray-200 rounded-lg"></div>
+                                <div className="h-16 bg-gray-200 dark:bg-neutral/50 rounded-lg"></div>
                               </div>
                             ))}
                           </div>
                         ) : userDomains.length > 0 ? (
-                          <div className="space-y-4">
-                            {userDomains.slice(0, 5).map((domain) => (
+                          <div className="space-y-3">
+                            {userDomains.slice(0, 5).map((domain, index) => (
                               <div
                                 key={domain._id}
-                                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                                className={`flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 ${
+                                  index % 2 === 0 ? "bg-white/50 dark:bg-neutral/50" : "bg-gray-50/50 dark:bg-neutral/70"
+                                } hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors cursor-pointer`}
                                 onClick={() => setActiveTab("domains")}
                               >
                                 <div className="flex items-center space-x-4">
@@ -495,34 +494,33 @@ export default function DashboardPage() {
                                       domain.status === "active"
                                         ? "bg-green-500"
                                         : domain.status === "expiring"
-                                          ? "bg-orange-500"
-                                          : "bg-red-500"
+                                        ? "bg-red-500"
+                                        : "bg-gray-500"
                                     }`}
                                   />
                                   <div>
-                                    <p className="font-medium">{domain.fullDomain}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      Expires: {new Date(domain.expiryDate).toLocaleDateString()} ({domain.daysUntilExpiry} days)
+                                    <p className="font-medium text-gray-800 dark:text-gray-100">{domain.fullDomain}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                      Expires: {new Date(domain.expiryDate).toLocaleDateString()} (
+                                      {domain.daysUntilExpiry} days)
                                     </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <Badge
-                                    variant={domain.status === "active" ? "default" : "destructive"}
-                                    className="capitalize"
-                                  >
-                                    {domain.status}
-                                  </Badge>
-                                </div>
+                                <Badge
+                                  variant={domain.status === "active" ? "default" : "destructive"}
+                                  className="capitalize bg-green-500 dark:bg-green-600 text-white"
+                                >
+                                  {domain.status}
+                                </Badge>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-center py-8 text-muted-foreground">
+                          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                             <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p>No domains registered yet</p>
-                            <Button 
-                              className="mt-4" 
+                            <Button
+                              className="mt-4 btn-primary"
                               onClick={() => setActiveTab("search")}
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -535,42 +533,42 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="space-y-6">
-                    <Card className="card-glass border-0">
+                    <Card className="card-glass">
                       <CardHeader>
-                        <CardTitle className="text-lg font-heading">{text.quickActions}</CardTitle>
+                        <CardTitle className="text-lg font-heading text-gray-800 dark:text-gray-100">
+                          {text.quickActions}
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <Button
-                          className="w-full justify-start btn-glass font-body"
-                          onClick={() => setActiveTab("search")}
-                        >
-                          <Plus className="mr-3 h-4 w-4" />
-                          {text.addDomain}
-                        </Button>
-                        <Button
-                          className="w-full justify-start btn-glass font-body"
-                          onClick={() => setActiveTab("profile")}
-                        >
-                          <Settings className="mr-3 h-4 w-4" />
-                          {text.manageSettings}
-                        </Button>
-                        <Button className="w-full justify-start btn-glass font-body">
-                          <TrendingUp className="mr-3 h-4 w-4" />
-                          {text.viewAnalytics}
-                        </Button>
+                        {[
+                          { label: text.addDomain, icon: Plus, action: () => setActiveTab("search") },
+                          { label: text.manageSettings, icon: Settings, action: () => setActiveTab("profile") },
+                          { label: text.viewAnalytics, icon: TrendingUp, action: () => {} },
+                        ].map(({ label, icon: Icon, action }, index) => (
+                          <Button
+                            key={index}
+                            className="w-full justify-start btn-glass font-body text-gray-700 dark:text-gray-200"
+                            onClick={action}
+                          >
+                            <Icon className="mr-3 h-4 w-4" />
+                            {label}
+                          </Button>
+                        ))}
                       </CardContent>
                     </Card>
 
-                    <Card className="card-glass border-0">
+                    <Card className="card-glass">
                       <CardHeader>
-                        <CardTitle className="text-lg font-heading">{text.recentActivity}</CardTitle>
+                        <CardTitle className="text-lg font-heading text-gray-800 dark:text-gray-100">
+                          {text.recentActivity}
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         {loading ? (
                           <div className="space-y-4">
                             {[1, 2, 3].map((i) => (
                               <div key={i} className="animate-pulse">
-                                <div className="h-12 bg-gray-200 rounded"></div>
+                                <div className="h-12 bg-gray-200 dark:bg-neutral/50 rounded"></div>
                               </div>
                             ))}
                           </div>
@@ -579,17 +577,23 @@ export default function DashboardPage() {
                             {recentActivity.slice(0, 5).map((activity) => (
                               <div key={activity._id} className="flex items-start space-x-3">
                                 <div className="mt-2">
-                                  {activity.type === "success" && <CheckCircle className="h-4 w-4 text-green-500" />}
-                                  {activity.type === "warning" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
-                                  {activity.type === "error" && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                                  {activity.type === "success" && (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  )}
+                                  {activity.type === "warning" && (
+                                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                                  )}
+                                  {activity.type === "error" && (
+                                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                                  )}
                                   {activity.type === "info" && <Info className="h-4 w-4 text-blue-500" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium">{activity.action}</p>
+                                  <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{activity.action}</p>
                                   {activity.domain && (
-                                    <p className="text-xs text-muted-foreground">{activity.domain}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{activity.domain}</p>
                                   )}
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
                                     {new Date(activity.timestamp).toLocaleDateString()}
                                   </p>
                                 </div>
@@ -597,7 +601,7 @@ export default function DashboardPage() {
                             ))}
                           </div>
                         ) : (
-                          <div className="text-center py-4 text-muted-foreground">
+                          <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                             <p className="text-sm">No recent activity</p>
                           </div>
                         )}
@@ -605,6 +609,73 @@ export default function DashboardPage() {
                     </Card>
                   </div>
                 </div>
+
+                <Card className="card-glass mt-8">
+                  <CardHeader>
+                    <CardTitle className="flex items-center font-heading text-xl text-gray-800 dark:text-gray-100">
+                      <Globe className="mr-2 h-5 w-5" />
+                      Accredited Registrars
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {registrars.length === 0 ? (
+                        <div className="text-gray-500 dark:text-gray-400">No registrars found.</div>
+                      ) : (
+                        registrars.slice(0, 6).map((reg) => (
+                          <div
+                            key={reg._id || reg.name}
+                            className="p-3 rounded-lg bg-white/50 dark:bg-neutral/50 flex flex-col items-center shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <img
+                              src={getLocalLogo(reg)}
+                              alt={reg.name}
+                              className="h-8 w-8 mb-2 object-contain"
+                              onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                img.onerror = null;
+                                img.src = reg.logoUrl || "/logos/hostpinacle.webp";
+                              }}
+                            />
+                            <span className="font-medium text-center text-gray-800 dark:text-gray-100">{reg.name}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{reg.website}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="card-glass mt-8">
+                  <CardHeader>
+                    <CardTitle className="flex items-center font-heading text-xl text-gray-800 dark:text-gray-100">
+                      <DollarSign className="mr-2 h-5 w-5" />
+                      Billing Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col items-center">
+                      <div className="w-48 h-48 mb-4">
+                        <Pie
+                          data={pieChartData}
+                          options={{
+                            responsive: true,
+                            plugins: {
+                              legend: {
+                                position: "bottom",
+                                labels: { color: "text-gray-800 dark:text-gray-100" },
+                              },
+                            },
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between w-full text-sm text-gray-500 dark:text-gray-400">
+                        <span>Pending: KSh {billingSummary.pendingPayments.toLocaleString()}</span>
+                        <span>Monthly: KSh {billingSummary.monthlySpend.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </>
             )}
 
@@ -615,77 +686,15 @@ export default function DashboardPage() {
             {activeTab === "community" && <CommunityHub />}
             {activeTab === "learning" && <LearningHub />}
 
-            {/* Accredited Registrars Section */}
-            {activeTab === "overview" && (
-              <Card className="card-glass border-0 mt-8">
-                <CardHeader>
-                  <CardTitle className="flex items-center font-heading">
-                    <Globe className="mr-3 h-5 w-5" />
-                    Accredited Registrars
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {registrars.length === 0 ? (
-                      <div className="text-muted-foreground">No registrars found.</div>
-                    ) : (
-                      registrars.slice(0, 6).map((reg) => (
-                        <div key={reg._id || reg.name} className="p-3 rounded-lg bg-muted flex flex-col items-center shadow-sm">
-                          <img
-                            src={getLocalLogo(reg)}
-                            alt={reg.name}
-                            className="h-8 w-8 mb-2 object-contain"
-                            onError={(e) => {
-                              const img = e.currentTarget as HTMLImageElement
-                              img.onerror = null
-                              img.src = reg.logoUrl || "/logos/hostpinacle.webp"
-                            }}
-                          />
-                          <span className="font-medium text-center">{reg.name}</span>
-                          <span className="text-xs text-muted-foreground">{reg.website}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Billing Overview Card */}
-            {activeTab === "overview" && (
-              <Card className="card-glass border-0 mt-8">
-                <CardHeader>
-                  <CardTitle className="flex items-center font-heading">
-                    <DollarSign className="mr-3 h-5 w-5" />
-                    Billing Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center">
-                    {/* Replace with a real chart if you add Chart.js */}
-                    <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-primary/20 to-accent/30 flex items-center justify-center mb-2">
-                      <span className="text-2xl font-bold text-primary">
-                        KSh {billingSummary.totalSpent.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between w-full text-sm text-muted-foreground">
-                      <span>Pending: KSh {billingSummary.pendingPayments.toLocaleString()}</span>
-                      <span>Monthly: KSh {billingSummary.monthlySpend.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {sidebarOpen && (
+              <div
+                className="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm z-30 lg:hidden"
+                onClick={() => setSidebarOpen(false)}
+              />
             )}
           </main>
         </div>
-
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
       </div>
     </ProtectedRoute>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,15 +34,19 @@ import {
   AlertTriangle,
 } from "lucide-react"
 
+import { useAuth } from "@/contexts/auth-context"
+import { getUser, updateUser, getMyProfile } from "@/lib/user"
+import { apiPost } from "@/lib/api"
+
 interface UserProfile {
   firstName: string
   lastName: string
   email: string
   phone: string
-  company: string
-  address: string
-  city: string
-  country: string
+  company?: string
+  address?: string
+  city?: string
+  country?: string
   language: "en" | "sw"
   timezone: string
 }
@@ -63,21 +67,23 @@ interface SecuritySettings {
 }
 
 export default function UserProfile() {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState("profile")
   const [isEditing, setIsEditing] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const [profile, setProfile] = useState<UserProfile>({
-    firstName: "Jane",
-    lastName: "Mwangi",
-    email: "jane.mwangi@example.com",
-    phone: "+254 700 123 456",
-    company: "Mwangi Crafts Ltd",
-    address: "123 Kenyatta Avenue",
-    city: "Nairobi",
-    country: "Kenya",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    company: "",
+    address: "",
+    city: "",
+    country: "",
     language: "en",
     timezone: "Africa/Nairobi",
   })
@@ -103,6 +109,7 @@ export default function UserProfile() {
     confirmPassword: "",
   })
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const loginHistory = [
     { date: "2025-01-15 10:30 AM", location: "Nairobi, Kenya", device: "Chrome on Windows", status: "success" },
     { date: "2025-01-14 02:15 PM", location: "Nairobi, Kenya", device: "Safari on iPhone", status: "success" },
@@ -110,12 +117,94 @@ export default function UserProfile() {
     { date: "2025-01-12 11:20 PM", location: "Unknown Location", device: "Firefox on Linux", status: "blocked" },
   ]
 
+  // Load profile from API when mounted or when user changes
+  useEffect(() => {
+    const load = async () => {
+      if (!user?.id) return
+      setLoading(true)
+      try {
+        // prefer /api/users/:id then fallback to /api/auth/profile
+        const res = await getUser(user.id).catch(() => null)
+        const u = res?.user ?? res ?? (await getMyProfile().catch(() => null))
+        if (u) {
+          setProfile({
+            firstName: u.firstName ?? u.first_name ?? "",
+            lastName: u.lastName ?? u.last_name ?? "",
+            email: u.email ?? "",
+            phone: u.phone ?? "",
+            company: u.company ?? "",
+            address: u.address ?? "",
+            city: u.city ?? "",
+            country: u.country ?? "",
+            language: (u.language as "en" | "sw") ?? "en",
+            timezone: u.timezone ?? "Africa/Nairobi",
+          })
+          setNotifications({
+            emailNotifications: !!u.emailNotifications,
+            smsNotifications: !!u.smsNotifications,
+            domainExpiry: !!u.domainExpiry,
+            paymentReminders: !!u.paymentReminders,
+            securityAlerts: !!u.securityAlerts,
+            marketingEmails: !!u.marketingEmails,
+          })
+          setSecurity({
+            twoFactorAuth: !!u.twoFactorAuth,
+            loginAlerts: !!u.loginAlerts,
+            apiAccess: !!u.apiAccess,
+          })
+          setAvatarUrl(u.avatarUrl ?? u.avatar ?? null)
+        }
+      } catch (err) {
+        console.warn("Failed to load profile", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [user?.id])
+
   const handleSaveProfile = async () => {
+    if (!user?.id) return alert("Not logged in")
     setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setIsEditing(false)
+    try {
+      // merge profile + settings into updates
+      const updates: any = {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email,
+        phone: profile.phone,
+        company: profile.company,
+        address: profile.address,
+        city: profile.city,
+        country: profile.country,
+        language: profile.language,
+        timezone: profile.timezone,
+        // include notification/security preferences
+        ...notifications,
+        ...security,
+      }
+      const res = await updateUser(user.id, updates)
+      // update local profile state from response if provided
+      const u = res?.user ?? res ?? null
+      if (u) {
+        setProfile((prev) => ({ ...prev, firstName: u.firstName ?? prev.firstName, lastName: u.lastName ?? prev.lastName, email: u.email ?? prev.email, phone: u.phone ?? prev.phone }))
+      }
+      // persist to local storage user object if present
+      try {
+        const stored = localStorage.getItem("auth_user")
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          const merged = { ...parsed, ...updates }
+          localStorage.setItem("auth_user", JSON.stringify(merged))
+        }
+      } catch {}
+      setIsEditing(false)
+      alert("Profile updated")
+    } catch (err: any) {
+      alert(err?.message || "Update failed")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handlePasswordChange = async () => {
@@ -123,12 +212,20 @@ export default function UserProfile() {
       alert("Passwords don't match!")
       return
     }
-
     setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+    try {
+      // backend may provide /api/auth/change-password
+      await apiPost("/api/auth/change-password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      })
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      alert("Password updated")
+    } catch (err: any) {
+      alert(err?.message || "Password change failed")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleNotificationChange = (key: keyof NotificationSettings, value: boolean) => {
@@ -139,6 +236,31 @@ export default function UserProfile() {
     setSecurity((prev) => ({ ...prev, [key]: value }))
   }
 
+  const handleAvatarUpload = async (file?: File) => {
+    if (!user?.id) return alert("Not logged in")
+    if (!file) return
+    setIsSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append("avatar", file)
+      // attempt POST /api/users/:id/avatar
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://mili-hack.onrender.com"}/api/users/${encodeURIComponent(user.id)}/avatar`, {
+        method: "POST",
+        body: fd,
+        // auth header if present
+        headers: (typeof window !== "undefined" && localStorage.getItem("auth_token")) ? { Authorization: `Bearer ${localStorage.getItem("auth_token")}` } : undefined,
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || data?.error || res.statusText)
+      setAvatarUrl(data?.avatarUrl || data?.url || null)
+      alert("Avatar uploaded")
+    } catch (err: any) {
+      alert(err?.message || "Upload failed")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Profile Header */}
@@ -147,29 +269,32 @@ export default function UserProfile() {
           <div className="flex items-center space-x-6">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                <AvatarImage src="/customer-avatar-sarah.png" />
-                <AvatarFallback className="text-lg">JM</AvatarFallback>
+                {avatarUrl ? <AvatarImage src={avatarUrl} /> : <AvatarFallback className="text-lg">{(profile.firstName?.[0] ?? "U") + (profile.lastName?.[0] ?? "")}</AvatarFallback>}
               </Avatar>
-              <Button
-                size="sm"
-                className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0 bg-transparent"
-                variant="outline"
-              >
-                <Upload className="h-3 w-3" />
-              </Button>
+              <label className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0 bg-transparent cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
+                />
+                <Button size="sm" className="h-8 w-8 p-0" variant="outline">
+                  <Upload className="h-3 w-3" />
+                </Button>
+              </label>
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold">
-                {profile.firstName} {profile.lastName}
+                {profile.firstName || "User"} {profile.lastName || ""}
               </h2>
               <p className="text-muted-foreground">{profile.email}</p>
               <p className="text-sm text-muted-foreground">{profile.company}</p>
               <div className="flex items-center space-x-4 mt-2">
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge className="bg-green-100 text-green-800">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Verified Account
                 </Badge>
-                <Badge variant="secondary">Premium Member</Badge>
+                <Badge>Member</Badge>
               </div>
             </div>
             <Button onClick={() => setIsEditing(!isEditing)} variant={isEditing ? "outline" : "default"}>
@@ -203,92 +328,47 @@ export default function UserProfile() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={profile.firstName}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, firstName: e.target.value }))}
-                    disabled={!isEditing}
-                  />
+                  <Input id="firstName" value={profile.firstName} onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))} disabled={!isEditing} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={profile.lastName}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, lastName: e.target.value }))}
-                    disabled={!isEditing}
-                  />
+                  <Input id="lastName" value={profile.lastName} onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))} disabled={!isEditing} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
-                      disabled={!isEditing}
-                      className="pl-10"
-                    />
+                    <Input id="email" type="email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} disabled={!isEditing} className="pl-10" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile((prev) => ({ ...prev, phone: e.target.value }))}
-                      disabled={!isEditing}
-                      className="pl-10"
-                    />
+                    <Input id="phone" value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} disabled={!isEditing} className="pl-10" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="company">Company</Label>
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="company"
-                      value={profile.company}
-                      onChange={(e) => setProfile((prev) => ({ ...prev, company: e.target.value }))}
-                      disabled={!isEditing}
-                      className="pl-10"
-                    />
+                    <Input id="company" value={profile.company} onChange={(e) => setProfile((p) => ({ ...p, company: e.target.value }))} disabled={!isEditing} className="pl-10" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="address"
-                      value={profile.address}
-                      onChange={(e) => setProfile((prev) => ({ ...prev, address: e.target.value }))}
-                      disabled={!isEditing}
-                      className="pl-10"
-                    />
+                    <Input id="address" value={profile.address} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} disabled={!isEditing} className="pl-10" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={profile.city}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, city: e.target.value }))}
-                    disabled={!isEditing}
-                  />
+                  <Input id="city" value={profile.city} onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))} disabled={!isEditing} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    value={profile.country}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, country: e.target.value }))}
-                    disabled={!isEditing}
-                  />
+                  <Input id="country" value={profile.country} onChange={(e) => setProfile((p) => ({ ...p, country: e.target.value }))} disabled={!isEditing} />
                 </div>
               </div>
 
@@ -298,25 +378,13 @@ export default function UserProfile() {
                   <Label>Preferred Language</Label>
                   <div className="flex items-center space-x-3">
                     <Languages className="h-4 w-4 text-muted-foreground" />
-                    <Switch
-                      checked={profile.language === "sw"}
-                      onCheckedChange={(checked) =>
-                        setProfile((prev) => ({ ...prev, language: checked ? "sw" : "en" }))
-                      }
-                      disabled={!isEditing}
-                    />
+                    <Switch checked={profile.language === "sw"} onCheckedChange={(checked) => setProfile((p) => ({ ...p, language: checked ? "sw" : "en" }))} disabled={!isEditing} />
                     <span className="text-sm">{profile.language === "sw" ? "Kiswahili" : "English"}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <select
-                    id="timezone"
-                    value={profile.timezone}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, timezone: e.target.value }))}
-                    disabled={!isEditing}
-                    className="w-full p-2 border rounded-md"
-                  >
+                  <select id="timezone" value={profile.timezone} onChange={(e) => setProfile((p) => ({ ...p, timezone: e.target.value }))} disabled={!isEditing} className="w-full p-2 border rounded-md">
                     <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
                     <option value="UTC">UTC</option>
                   </select>
@@ -325,9 +393,7 @@ export default function UserProfile() {
 
               {isEditing && (
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
+                  <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
                   <Button onClick={handleSaveProfile} disabled={isSaving}>
                     {isSaving ? (
                       <>
@@ -362,20 +428,8 @@ export default function UserProfile() {
                 <div className="space-y-2">
                   <Label htmlFor="currentPassword">Current Password</Label>
                   <div className="relative">
-                    <Input
-                      id="currentPassword"
-                      type={showCurrentPassword ? "text" : "password"}
-                      value={passwordData.currentPassword}
-                      onChange={(e) => setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    >
+                    <Input id="currentPassword" type={showCurrentPassword ? "text" : "password"} value={passwordData.currentPassword} onChange={(e) => setPasswordData((p) => ({ ...p, currentPassword: e.target.value }))} className="pr-10" />
+                    <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowCurrentPassword(!showCurrentPassword)}>
                       {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -383,34 +437,17 @@ export default function UserProfile() {
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">New Password</Label>
                   <div className="relative">
-                    <Input
-                      id="newPassword"
-                      type={showNewPassword ? "text" : "password"}
-                      value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
+                    <Input id="newPassword" type={showNewPassword ? "text" : "password"} value={passwordData.newPassword} onChange={(e) => setPasswordData((p) => ({ ...p, newPassword: e.target.value }))} className="pr-10" />
+                    <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowNewPassword(!showNewPassword)}>
                       {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                  />
+                  <Input id="confirmPassword" type="password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData((p) => ({ ...p, confirmPassword: e.target.value }))} />
                 </div>
-                <Button onClick={handlePasswordChange} className="w-full">
+                <Button onClick={handlePasswordChange} className="w-full" disabled={isSaving}>
                   Update Password
                 </Button>
               </CardContent>
@@ -430,30 +467,21 @@ export default function UserProfile() {
                     <h4 className="font-medium">Two-Factor Authentication</h4>
                     <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
                   </div>
-                  <Switch
-                    checked={security.twoFactorAuth}
-                    onCheckedChange={(checked) => handleSecurityChange("twoFactorAuth", checked)}
-                  />
+                  <Switch checked={security.twoFactorAuth} onCheckedChange={(checked) => handleSecurityChange("twoFactorAuth", checked)} />
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <h4 className="font-medium">Login Alerts</h4>
                     <p className="text-sm text-muted-foreground">Get notified of new logins</p>
                   </div>
-                  <Switch
-                    checked={security.loginAlerts}
-                    onCheckedChange={(checked) => handleSecurityChange("loginAlerts", checked)}
-                  />
+                  <Switch checked={security.loginAlerts} onCheckedChange={(checked) => handleSecurityChange("loginAlerts", checked)} />
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <h4 className="font-medium">API Access</h4>
                     <p className="text-sm text-muted-foreground">Enable API key generation</p>
                   </div>
-                  <Switch
-                    checked={security.apiAccess}
-                    onCheckedChange={(checked) => handleSecurityChange("apiAccess", checked)}
-                  />
+                  <Switch checked={security.apiAccess} onCheckedChange={(checked) => handleSecurityChange("apiAccess", checked)} />
                 </div>
               </CardContent>
             </Card>
@@ -472,9 +500,7 @@ export default function UserProfile() {
                 {loginHistory.map((login, index) => (
                   <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-2 h-2 rounded-full ${login.status === "success" ? "bg-green-500" : "bg-red-500"}`}
-                      />
+                      <div className={`w-2 h-2 rounded-full ${login.status === "success" ? "bg-green-500" : "bg-red-500"}`} />
                       <div>
                         <p className="font-medium">{login.date}</p>
                         <p className="text-sm text-muted-foreground">
@@ -510,10 +536,7 @@ export default function UserProfile() {
                       <p className="text-sm text-muted-foreground">Receive notifications via email</p>
                     </div>
                   </div>
-                  <Switch
-                    checked={notifications.emailNotifications}
-                    onCheckedChange={(checked) => handleNotificationChange("emailNotifications", checked)}
-                  />
+                  <Switch checked={notifications.emailNotifications} onCheckedChange={(checked) => handleNotificationChange("emailNotifications", checked)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -524,10 +547,7 @@ export default function UserProfile() {
                       <p className="text-sm text-muted-foreground">Receive notifications via SMS</p>
                     </div>
                   </div>
-                  <Switch
-                    checked={notifications.smsNotifications}
-                    onCheckedChange={(checked) => handleNotificationChange("smsNotifications", checked)}
-                  />
+                  <Switch checked={notifications.smsNotifications} onCheckedChange={(checked) => handleNotificationChange("smsNotifications", checked)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -538,10 +558,7 @@ export default function UserProfile() {
                       <p className="text-sm text-muted-foreground">Get reminded before domains expire</p>
                     </div>
                   </div>
-                  <Switch
-                    checked={notifications.domainExpiry}
-                    onCheckedChange={(checked) => handleNotificationChange("domainExpiry", checked)}
-                  />
+                  <Switch checked={notifications.domainExpiry} onCheckedChange={(checked) => handleNotificationChange("domainExpiry", checked)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -552,10 +569,7 @@ export default function UserProfile() {
                       <p className="text-sm text-muted-foreground">Reminders for upcoming payments</p>
                     </div>
                   </div>
-                  <Switch
-                    checked={notifications.paymentReminders}
-                    onCheckedChange={(checked) => handleNotificationChange("paymentReminders", checked)}
-                  />
+                  <Switch checked={notifications.paymentReminders} onCheckedChange={(checked) => handleNotificationChange("paymentReminders", checked)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -566,10 +580,7 @@ export default function UserProfile() {
                       <p className="text-sm text-muted-foreground">Important security notifications</p>
                     </div>
                   </div>
-                  <Switch
-                    checked={notifications.securityAlerts}
-                    onCheckedChange={(checked) => handleNotificationChange("securityAlerts", checked)}
-                  />
+                  <Switch checked={notifications.securityAlerts} onCheckedChange={(checked) => handleNotificationChange("securityAlerts", checked)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -580,10 +591,7 @@ export default function UserProfile() {
                       <p className="text-sm text-muted-foreground">Product updates and promotions</p>
                     </div>
                   </div>
-                  <Switch
-                    checked={notifications.marketingEmails}
-                    onCheckedChange={(checked) => handleNotificationChange("marketingEmails", checked)}
-                  />
+                  <Switch checked={notifications.marketingEmails} onCheckedChange={(checked) => handleNotificationChange("marketingEmails", checked)} />
                 </div>
               </div>
 
@@ -617,7 +625,7 @@ export default function UserProfile() {
                       </div>
                       <div>
                         <p className="font-medium">M-Pesa</p>
-                        <p className="text-sm text-muted-foreground">+254 700 *** 456</p>
+                        <p className="text-sm text-muted-foreground">{profile.phone ? profile.phone : "+254 700 *** 456"}</p>
                       </div>
                     </div>
                     <Badge className="bg-green-100 text-green-800">Primary</Badge>
@@ -630,18 +638,14 @@ export default function UserProfile() {
                         <CreditCard className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium">Visa Card</p>
+                        <p className="font-medium">Saved Card</p>
                         <p className="text-sm text-muted-foreground">**** **** **** 1234</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">
-                      Edit
-                    </Button>
+                    <Button variant="outline" size="sm">Edit</Button>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full bg-transparent">
-                  Add Payment Method
-                </Button>
+                <Button variant="outline" className="w-full bg-transparent">Add Payment Method</Button>
               </CardContent>
             </Card>
 
@@ -662,9 +666,7 @@ export default function UserProfile() {
                   <span>Auto-renewal</span>
                   <Badge className="bg-green-100 text-green-800">Enabled</Badge>
                 </div>
-                <Button variant="outline" className="w-full bg-transparent">
-                  View Billing History
-                </Button>
+                <Button variant="outline" className="w-full bg-transparent">View Billing History</Button>
               </CardContent>
             </Card>
           </div>
@@ -691,12 +693,8 @@ export default function UserProfile() {
                         <p className="text-xs text-muted-foreground">Created: Jan 10, 2025 • Last used: 2 hours ago</p>
                       </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          Regenerate
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          Delete
-                        </Button>
+                        <Button variant="outline" size="sm">Regenerate</Button>
+                        <Button variant="outline" size="sm">Delete</Button>
                       </div>
                     </div>
                   </div>
@@ -708,12 +706,8 @@ export default function UserProfile() {
                         <p className="text-xs text-muted-foreground">Created: Jan 5, 2025 • Last used: Never</p>
                       </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          Regenerate
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          Delete
-                        </Button>
+                        <Button variant="outline" size="sm">Regenerate</Button>
+                        <Button variant="outline" size="sm">Delete</Button>
                       </div>
                     </div>
                   </div>

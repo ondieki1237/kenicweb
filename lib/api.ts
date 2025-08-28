@@ -1,112 +1,101 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://mili-hack.onrender.com"
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://mili-hack.onrender.com").replace(/\/$/, "")
+export const AUTH_STORAGE_KEY = "auth_token"
 
-// Get auth token from localStorage
-const getAuthToken = () => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("auth_token")
-    console.log("[v0] Getting auth token:", token ? "Token found" : "No token found")
-    return token
-  }
-  return null
+function getAuthHeader() {
+  if (typeof window === "undefined") return {}
+  const t = localStorage.getItem(AUTH_STORAGE_KEY)
+  return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
-// API request helper with auth
-const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = getAuthToken()
-
-  console.log("[v0] Making API request to:", `${API_BASE_URL}${endpoint}`)
-  console.log("[v0] Token available:", token ? "Yes" : "No")
-
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
+async function parseJsonSafe(res: Response) {
+  let data: any = null
+  try { data = await res.json() } catch {}
+  if (!res.ok) {
+    const msg = data?.message || data?.error || res.statusText || `Request failed ${res.status}`
+    throw new Error(msg)
   }
-
-  console.log("[v0] Request headers:", config.headers)
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-
-  console.log("[v0] Response status:", response.status)
-
-  if (response.status === 401) {
-    // Token expired or invalid, clear it and redirect to login
-    console.log("[v0] 401 error - clearing token and redirecting")
-    localStorage.removeItem("auth_token")
-    window.location.href = "/login"
-    throw new Error("Authentication required")
-  }
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Network error" }))
-    console.error("[v0] API error:", error)
-    throw new Error(error.message || `HTTP error! status: ${response.status}`)
-  }
-
-  const data = await response.json()
-  console.log("[v0] API response data:", data)
   return data
+}
+
+export async function apiGet(path: string) {
+  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`
+  const res = await fetch(url, { headers: { "Content-Type": "application/json", ...getAuthHeader() } })
+  return parseJsonSafe(res)
+}
+
+export async function apiPost(path: string, body: any) {
+  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeader() },
+    body: JSON.stringify(body),
+  })
+  return parseJsonSafe(res)
+}
+
+export async function apiPut(path: string, body: any) {
+  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getAuthHeader() },
+    body: JSON.stringify(body),
+  })
+  return parseJsonSafe(res)
+}
+
+export async function apiDelete(path: string) {
+  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`
+  const res = await fetch(url, { method: "DELETE", headers: { "Content-Type": "application/json", ...getAuthHeader() } })
+  return parseJsonSafe(res)
 }
 
 // Domain API functions
 export const domainApi = {
   // Check single domain availability
   checkDomain: async (domain: string) => {
-    return apiRequest(`/api/domains/check/${domain}`)
+    return apiGet(`/api/domains/check/${domain}`)
   },
 
   // Get WHOIS information
   getWhois: async (domain: string) => {
-    return apiRequest(`/api/domains/whois/${domain}`)
+    return apiGet(`/api/domains/whois/${domain}`)
   },
 
   // Bulk check multiple domains
   bulkCheck: async (domains: string[]) => {
-    return apiRequest("/api/domains/bulk-check", {
-      method: "POST",
-      body: JSON.stringify({ domains }),
-    })
+    return apiPost("/api/domains/bulk-check", { domains })
   },
 
   // Get domain suggestions
   getSuggestions: async (baseName: string) => {
-    return apiRequest(`/api/domains/suggestions/${baseName}`)
+    return apiGet(`/api/domains/suggestions/${baseName}`)
   },
 
   getAISuggestions: async (
     baseName: string,
     options?: { businessDescription?: string; industry?: string; targetAudience?: string },
   ) => {
-    return apiRequest("/api/domains/ai-suggestions", {
-      method: "POST",
-      body: JSON.stringify({
-        baseName,
-        businessDescription: options?.businessDescription || `Business related to ${baseName}`,
-        industry: options?.industry || "general",
-        targetAudience: options?.targetAudience || "general public",
-      }),
+    return apiPost("/api/domains/ai-suggestions", {
+      baseName,
+      businessDescription: options?.businessDescription || `Business related to ${baseName}`,
+      industry: options?.industry || "general",
+      targetAudience: options?.targetAudience || "general public",
     })
   },
 
   // Get list of registrars
   getRegistrars: async () => {
-    return apiRequest("/api/domains/registrars")
+    return apiGet("/api/domains/registrars")
   },
 
   // AI suggestions based on business description only
   getAISuggestionsFromBusiness: async (businessDescription: string, max?: number) => {
-    return apiRequest("/api/domains/ai-suggestions", {
-      method: "POST",
-      body: JSON.stringify({ businessDescription, ...(max ? { max } : {}) }),
-    })
+    return apiPost("/api/domains/ai-suggestions", { businessDescription, ...(max ? { max } : {}) })
   },
 
   // Get user's domains
   getUserDomains: async () => {
-    return apiRequest("/api/domains/user/domains")
+    return apiGet("/api/domains/user/domains")
   },
 
   // Register a new domain
@@ -118,15 +107,12 @@ export const domainApi = {
     price: number;
     expiryDate: string;
   }) => {
-    return apiRequest("/api/domains/user/register", {
-      method: "POST",
-      body: JSON.stringify(domainData),
-    })
+    return apiPost("/api/domains/user/register", domainData)
   },
 
   // Get user activity
   getUserActivity: async () => {
-    return apiRequest("/api/domains/user/activity")
+    return apiGet("/api/domains/user/activity")
   },
 }
 
@@ -134,12 +120,12 @@ export const domainApi = {
 export const billingApi = {
   // Get user's billing history
   getUserBilling: async () => {
-    return apiRequest("/api/billing/user/billing")
+    return apiGet("/api/billing/user/billing")
   },
 
   // Get billing summary
   getBillingSummary: async () => {
-    return apiRequest("/api/billing/user/billing/summary")
+    return apiGet("/api/billing/user/billing/summary")
   },
 
   // Create a new billing record
@@ -151,39 +137,27 @@ export const billingApi = {
     type: "registration" | "renewal" | "transfer" | "other";
     dueDate?: string;
   }) => {
-    return apiRequest("/api/billing/user/billing", {
-      method: "POST",
-      body: JSON.stringify(billingData),
-    })
+    return apiPost("/api/billing/user/billing", billingData)
   },
 
   // Update billing status
   updateBillingStatus: async (billingId: string, status: string, paymentReference?: string) => {
-    return apiRequest(`/api/billing/user/billing/${billingId}`, {
-      method: "PUT",
-      body: JSON.stringify({ status, paymentReference }),
-    })
+    return apiPut(`/api/billing/user/billing/${billingId}`, { status, paymentReference })
   },
 
   // Get pending payments
   getPendingPayments: async () => {
-    return apiRequest("/api/billing/user/billing/pending")
+    return apiGet("/api/billing/user/billing/pending")
   },
 }
 
 // Auth API functions
 export const authApi = {
   login: async (email: string, password: string) => {
-    return apiRequest("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    })
+    return apiPost("/api/auth/login", { email, password })
   },
 
   register: async (userData: any) => {
-    return apiRequest("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    })
+    return apiPost("/api/auth/register", userData)
   },
 }

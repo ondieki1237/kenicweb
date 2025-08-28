@@ -17,10 +17,9 @@ async function parseJsonSafe(res: Response) {
   return data
 }
 
-/**
- * Initiate M-Pesa STK push for a checkout session.
- * payload must include: { sessionId, userId, amount, phone, callbackUrl?, metadata? }
- */
+// If you already have this file, replace or merge with this version
+import { apiPost } from "./api"
+
 export async function initiateMpesaPayment(payload: {
   sessionId: string
   userId: string
@@ -29,14 +28,5 @@ export async function initiateMpesaPayment(payload: {
   callbackUrl?: string
   metadata?: Record<string, any>
 }) {
-  const url = `${API_BASE}/api/payment/mpesa/initiate`
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeader(),
-    },
-    body: JSON.stringify(payload),
-  })
-  return await parseJsonSafe(res)
+  return apiPost("/api/payment/mpesa/initiate", payload)
 }
