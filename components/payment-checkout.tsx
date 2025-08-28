@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Smartphone, CreditCard, Building, CheckCircle, Shield, Clock, ArrowLeft, Receipt } from "lucide-react"
+import { initiateMpesaPayment } from "@/lib/payment"
+import { useAuth } from "@/contexts/auth-context"
+import { v4 as uuidv4 } from "uuid"
 
 interface PaymentCheckoutProps {
   domain?: string
@@ -20,7 +23,7 @@ interface PaymentCheckoutProps {
 
 export default function PaymentCheckout({
   domain = "example.co.ke",
-  amount,
+  amount = 450,
   type,
   onSuccess,
   onCancel,
@@ -35,6 +38,33 @@ export default function PaymentCheckout({
     cvv: "",
     name: "",
   })
+
+  const { user } = useAuth()
+
+  // normalize Kenyan phone numbers to 2547XXXXXXXX format (no +)
+const normalizeKenyaPhone = (input: string) => {
+  if (!input) return ""
+
+  // remove all non-digits
+  let s = input.replace(/\D/g, "")
+
+  // Handle +254... or 254...
+  if (s.startsWith("254") && s.length === 12) return s
+  if (s.startsWith("254") && s.length > 12) return s.slice(0, 12)
+
+  // Handle leading 0 (07xxxxxxxx or 01xxxxxxxx)
+  if (s.startsWith("0") && s.length === 10) return "254" + s.slice(1)
+
+  // Handle case where someone enters without 0 (7xxxxxxxx or 1xxxxxxxx)
+  if (s.length === 9 && (s.startsWith("7") || s.startsWith("1"))) {
+    return "254" + s
+  }
+
+  return s // fallback
+}
+
+
+  const isValidKenyaPhone = (s: string) => /^2547\d{8}$/.test(s)
 
   const paymentMethods = [
     {
@@ -61,15 +91,52 @@ export default function PaymentCheckout({
   ]
 
   const handlePayment = async () => {
-    setIsProcessing(true)
+    // M-Pesa: call backend to initiate STK push
+    if (selectedPaymentMethod === "mpesa") {
+      if (!user?.id) {
+        alert("Please log in to proceed with payment.")
+        return
+      }
+      const normalized = normalizeKenyaPhone(mpesaPhone)
+      if (!isValidKenyaPhone(normalized)) {
+        alert("Please enter a valid Kenyan phone number (e.g. 0700 123 456 or +254700123456).")
+        return
+      }
 
+      setIsProcessing(true)
+      try {
+        const sessionId = uuidv4()
+        const payload = {
+          sessionId,
+          userId: user.id,
+          amount: Number(amount),
+          phone: normalized, // backend expects 'phone'
+          callbackUrl:
+            process.env.NEXT_PUBLIC_MPESA_CALLBACK_URL ||
+            "https://mili-hack.onrender.com/api/payment/mpesa/callback",
+          metadata: { domain, type },
+        }
+
+        const data = await initiateMpesaPayment(payload)
+        // success -> instruct user to complete on phone; backend will call callback webhook
+        setIsProcessing(false)
+        setPaymentComplete(true)
+        setTimeout(() => onSuccess?.(), 1500)
+      } catch (err: any) {
+        setIsProcessing(false)
+        const msg = err?.message || "Failed to initiate M-Pesa payment"
+        console.error("[v0] M-Pesa initiate error:", err)
+        alert(msg)
+      }
+      return
+    }
+
+    // Simulate other methods (card/bank)
+    setIsProcessing(true)
     // Simulate payment processing
     await new Promise((resolve) => setTimeout(resolve, 3000))
-
     setIsProcessing(false)
     setPaymentComplete(true)
-
-    // Call success callback after a short delay
     setTimeout(() => {
       onSuccess?.()
     }, 2000)

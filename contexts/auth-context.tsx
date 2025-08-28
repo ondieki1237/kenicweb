@@ -1,23 +1,46 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
-import {
-  type User,
-  loginUser,
-  signupUser,
-  verifyToken,
-  logoutUser,
-  type LoginCredentials,
-  type SignupData,
-} from "@/lib/auth"
+import React, { createContext, useContext, useEffect, useState } from "react"
+import { loginUser, signupUser, verifyToken, logoutUser } from "@/lib/auth"
+
+export const AUTH_TOKEN_KEY = "auth_token"
+export const AUTH_USER_KEY = "auth_user"
+
+export interface User {
+  id: string
+  firstName?: string
+  lastName?: string
+  name?: string
+  username?: string
+  email: string
+  phone?: string
+  company?: string
+  token?: string
+}
+
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+
+export interface SignupData {
+  firstName?: string
+  lastName?: string
+  name?: string
+  username?: string
+  email: string
+  phone?: string
+  password: string
+  role?: string
+  company?: string
+}
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   login: (credentials: LoginCredentials) => Promise<void>
-  signup: (userData: SignupData) => Promise<void>
-  register: (userData: SignupData) => Promise<void>
+  signup: (data: SignupData) => Promise<void>
+  register: (data: SignupData) => Promise<void>
   logout: () => Promise<void>
   isAuthenticated: boolean
 }
@@ -28,22 +51,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Check for existing token on mount
+  // Persist session until explicit logout:
+  // - store token in AUTH_TOKEN_KEY and user JSON in AUTH_USER_KEY on login/signup
+  // - on mount, restore session from storage and don't auto-logout on verify failure
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("auth_token")
+        if (typeof window === "undefined") return
+        const token = localStorage.getItem(AUTH_TOKEN_KEY)
+        const stored = localStorage.getItem(AUTH_USER_KEY)
         if (token) {
-          console.log("[v0] Verifying stored token...")
-          const userData = await verifyToken(token)
-          console.log("[v0] Token verification successful")
-          setUser({ ...userData, token })
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored)
+              setUser(parsed)
+            } catch {
+              // fallback to verify if stored user corrupted
+              const verified = await verifyToken(token).catch(() => null)
+              if (verified) {
+                setUser(verified)
+                localStorage.setItem(AUTH_USER_KEY, JSON.stringify(verified))
+              } else {
+                // keep user logged in per requirement — preserve token but clear user only if absolutely necessary
+                setUser(null)
+              }
+            }
+          } else {
+            // no stored user; attempt verify but do NOT forcibly clear token if verify fails
+            const verified = await verifyToken(token).catch(() => null)
+            if (verified) {
+              setUser(verified)
+              localStorage.setItem(AUTH_USER_KEY, JSON.stringify(verified))
+            } else {
+              // leave token in storage, but set user to null — user remains "logged in" until explicit logout
+              setUser(null)
+            }
+          }
         } else {
-          console.log("[v0] No stored token found")
+          setUser(null)
         }
-      } catch (error) {
-        console.error("[v0] Auth verification failed:", error)
-        localStorage.removeItem("auth_token")
+      } catch (err) {
+        console.warn("[v0] checkAuth failed:", (err as Error).message ?? err)
         setUser(null)
       } finally {
         setLoading(false)
@@ -54,75 +102,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (credentials: LoginCredentials) => {
-    try {
-      console.log("[v0] Starting login process...")
-      const userData = await loginUser(credentials)
-      console.log("[v0] Login successful, received user data")
-      console.log("[v0] User ID:", userData.id)
-      console.log("[v0] User email:", userData.email)
-      console.log("[v0] Token present:", !!userData.token)
-      console.log("[v0] Token preview:", userData.token ? `${userData.token.substring(0, 20)}...` : "null")
-
-      if (userData.token) {
-        localStorage.setItem("auth_token", userData.token)
-        const storedToken = localStorage.getItem("auth_token")
-        console.log("[v0] Token stored successfully:", !!storedToken)
-        console.log("[v0] Stored token preview:", storedToken ? `${storedToken.substring(0, 20)}...` : "null")
-
-        setUser(userData)
-        console.log("[v0] User state updated successfully")
-      } else {
-        console.error("[v0] No token received from login response")
-        throw new Error("No authentication token received")
-      }
-    } catch (error) {
-      console.error("[v0] Login failed:", error)
-      throw error
+    const result = await loginUser(credentials)
+    // loginUser should return { token, ...user }
+    if (result?.token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, result.token)
     }
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(result))
+    setUser(result)
   }
 
-  const signup = async (userData: SignupData) => {
-    try {
-      console.log("[v0] Attempting signup...")
-      const newUser = await signupUser(userData)
-      console.log("[v0] Signup successful, user data:", newUser)
-      console.log("[v0] Token received:", newUser.token ? "Yes" : "No")
-
-      if (newUser.token) {
-        localStorage.setItem("auth_token", newUser.token)
-        console.log("[v0] Token stored in localStorage")
-        setUser(newUser)
-        console.log("[v0] User state updated")
-      } else {
-        console.error("[v0] No token received from signup response")
-        throw new Error("No authentication token received")
-      }
-    } catch (error) {
-      console.error("[v0] Signup failed:", error)
-      throw error
+  const signup = async (data: SignupData) => {
+    const result = await signupUser(data)
+    if (result?.token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, result.token)
     }
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(result))
+    setUser(result)
   }
 
-  // register is now defined as an alias to signup for compatibility
-  const register = async (userData: SignupData) => {
-    return signup(userData)
-  }
+  // keep register alias for compatibility
+  const register = async (data: SignupData) => signup(data)
 
   const logout = async () => {
     try {
-      if (user?.token) {
-        await logoutUser(user.token)
+      const token = typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) : null
+      if (token) {
+        await logoutUser(token).catch(() => {}) // attempt server logout, ignore errors
       }
-    } catch (error) {
-      console.error("Logout error:", error)
     } finally {
-      localStorage.removeItem("auth_token")
+      // always remove local session data on explicit logout
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(AUTH_TOKEN_KEY)
+        localStorage.removeItem(AUTH_USER_KEY)
+      }
       setUser(null)
-      window.location.href = "/"
     }
   }
 
-  const value = {
+  const value: AuthContextType = {
     user,
     loading,
     login,
@@ -138,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within AuthProvider")
   }
   return context
 }

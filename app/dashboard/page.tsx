@@ -23,14 +23,16 @@ import {
   User,
   Receipt,
   Home,
+  ShoppingCart,
 } from "lucide-react"
+import Link from "next/link"
+import { getCart as fetchCart } from "@/lib/cart"
 import DomainSearch from "@/components/domain-search"
 import DomainManagement from "@/components/domain-management"
 import UserProfile from "@/components/user-profile"
 import BillingManagement from "@/components/billing-management"
 import CommunityHub from "@/components/community-hub"
 import LearningHub from "@/components/learning-hub"
-import Link from "next/link"
 import ProtectedRoute from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -70,6 +72,29 @@ export default function DashboardPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Cart count state
+  const [cartCount, setCartCount] = useState<number>(0)
+
+  const refreshCartCount = async () => {
+    try {
+      if (!user?.id) {
+        setCartCount(0)
+        return
+      }
+      const res = await fetchCart(user.id)
+      const items = res?.cart || res?.items || []
+      setCartCount(Array.isArray(items) ? items.length : 0)
+    } catch (err) {
+      console.error("Failed to load cart count:", err)
+      setCartCount(0)
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return
+    refreshCartCount()
+  }, [user])
 
   // Real data state
   const [userDomains, setUserDomains] = useState<UserDomain[]>([])
@@ -207,6 +232,18 @@ export default function DashboardPage() {
                 </Link>
               </Button>
 
+              {/* Cart button */}
+              <Button variant="ghost" size="sm" asChild title="Cart" className="relative hover:bg-muted/50">
+                <Link href="/cart" className="relative inline-flex items-center">
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs bg-destructive animate-float-gentle">
+                      {cartCount}
+                    </Badge>
+                  )}
+                </Link>
+              </Button>
+              
               <Button
                 variant="ghost"
                 size="sm"
