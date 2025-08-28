@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,14 +12,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 
-export default function SignupPage() {
+export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
+    username: "",
     email: "",
-    phone: "",
     password: "",
     confirmPassword: "",
+    role: "user", // Default to match schema
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -28,13 +27,13 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-  const { signup } = useAuth()
+  const { register } = useAuth()
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match!")
@@ -45,16 +44,16 @@ export default function SignupPage() {
     setError("")
 
     try {
-      await signup({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+      await register({
+        name: formData.name,
+        username: formData.username,
         email: formData.email,
-        phone: formData.phone,
         password: formData.password,
+        role: formData.role,
       })
       router.push("/dashboard")
     } catch (err: any) {
-      setError(err.message || "Signup failed. Please try again.")
+      setError(err.message || "Registration failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -76,54 +75,52 @@ export default function SignupPage() {
             <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-10 w-auto" />
           </div>
           <h1 className="text-3xl font-heading-bold mb-2">Join KeNIC</h1>
-          <p className="text-muted-foreground font-body">Create your account to manage .KE domains</p>
+          <p className="text-muted-foreground font-body">Register to manage .KE domains</p>
         </div>
 
         <Card className="card-glass border-0">
           <CardHeader className="space-y-2 pb-6">
-            <CardTitle className="text-2xl text-center font-heading">Create Account</CardTitle>
+            <CardTitle className="text-2xl text-center font-heading">Register</CardTitle>
             <CardDescription className="text-center font-body">
               Start your journey with Kenya's official domain registry
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form onSubmit={handleSignup} className="space-y-5">
+            <form onSubmit={handleRegister} className="space-y-5">
               {error && (
                 <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
                   {error}
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="font-body-medium">
-                    First Name
-                  </Label>
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    required
-                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="font-body-medium">
+                  Full Name
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  required
+                  className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" className="font-body-medium">
-                    Last Name
-                  </Label>
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
-                    required
-                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="username" className="font-body-medium">
+                  Username
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="johndoe"
+                  value={formData.username}
+                  onChange={(e) => handleInputChange("username", e.target.value)}
+                  required
+                  className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
+                />
               </div>
 
               <div className="space-y-2">
@@ -142,18 +139,19 @@ export default function SignupPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="font-body-medium">
-                  Phone Number
+                <Label htmlFor="role" className="font-body-medium">
+                  Role
                 </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+254 700 000 000"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                <select
+                  id="role"
+                  value={formData.role}
+                  onChange={(e) => handleInputChange("role", e.target.value)}
+                  className="w-full h-12 bg-input/50 border border-border/50 rounded-md px-3 focus:bg-background transition-colors"
                   required
-                  className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
-                />
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
 
               <div className="space-y-2">
@@ -243,7 +241,7 @@ export default function SignupPage() {
                 className="w-full h-12 btn-primary font-body-medium"
                 disabled={isLoading || !agreeToTerms}
               >
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading ? "Registering..." : "Register"}
               </Button>
             </form>
 

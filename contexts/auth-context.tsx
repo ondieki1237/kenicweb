@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean
   login: (credentials: LoginCredentials) => Promise<void>
   signup: (userData: SignupData) => Promise<void>
+  register: (userData: SignupData) => Promise<void>
   logout: () => Promise<void>
   isAuthenticated: boolean
 }
@@ -102,6 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // register is now defined as an alias to signup for compatibility
+  const register = async (userData: SignupData) => {
+    return signup(userData)
+  }
+
   const logout = async () => {
     try {
       if (user?.token) {
@@ -121,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     login,
     signup,
+    register,
     logout,
     isAuthenticated: !!user,
   }

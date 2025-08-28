@@ -63,9 +63,9 @@ export async function loginUser(credentials: LoginCredentials): Promise<User> {
   return userWithToken
 }
 
-// Signup function
+// Register function (renamed endpoint from signup to register)
 export async function signupUser(userData: SignupData): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, { // Changed from /api/auth/signup
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -75,11 +75,11 @@ export async function signupUser(userData: SignupData): Promise<User> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.message || "Signup failed")
+    throw new Error(error.message || "Register failed") // Updated error message
   }
 
   const data = await response.json()
-  console.log("[v0] Signup response:", data)
+  console.log("[v0] Register response:", data) // Updated log message
 
   // Extract user and token from backend response
   return {

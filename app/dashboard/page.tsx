@@ -169,6 +169,13 @@ export default function DashboardPage() {
   const expiringDomains = userDomains.filter(d => d.status === "expiring").length
   const activeServices = userDomains.filter(d => d.status === "active").length
 
+  // try local /public/logos/* first, fallback to registrar logoUrl or default image
+  const getLocalLogo = (reg: any) => {
+    const base = (reg.slug || reg.name || "").toString().toLowerCase()
+    const slug = base.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+    return `/logos/${slug}.png`
+  }
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-muted/20 via-background to-background">
@@ -194,7 +201,7 @@ export default function DashboardPage() {
                 </Badge>
               </Button>
 
-              <Button variant="ghost" size="sm" asChild title={text.backToHome} className="hover:bg-muted/50">
+              <Button variant="ghost" size="sm" asChild title={text.backToHome} className="hover:bg-green-100">
                 <Link href="/">
                   <Home className="h-5 w-5" />
                 </Link>
@@ -230,7 +237,7 @@ export default function DashboardPage() {
             } fixed inset-y-0 left-0 z-40 w-64 bg-card/60 backdrop-blur-md border-r border-border/50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 pt-16 lg:pt-0`}
           >
             <nav className="p-4 space-y-2">
-              <Button variant="ghost" className="w-full justify-start hover:bg-muted/50 font-body" asChild>
+              <Button variant="ghost" className="w-full justify-start hover:bg-green-100 font-body" asChild>
                 <Link href="/">
                   <Home className="mr-3 h-4 w-4" />
                   {text.backToHome}
@@ -239,7 +246,7 @@ export default function DashboardPage() {
 
               <Button
                 variant={activeTab === "overview" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "overview" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "overview" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("overview")}
               >
                 <Activity className="mr-3 h-4 w-4" />
@@ -248,7 +255,7 @@ export default function DashboardPage() {
 
               <Button
                 variant={activeTab === "domains" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "domains" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "domains" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("domains")}
               >
                 <Globe className="mr-3 h-4 w-4" />
@@ -256,7 +263,7 @@ export default function DashboardPage() {
               </Button>
               <Button
                 variant={activeTab === "search" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "search" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "search" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("search")}
               >
                 <Search className="mr-3 h-4 w-4" />
@@ -264,7 +271,7 @@ export default function DashboardPage() {
               </Button>
               <Button
                 variant={activeTab === "billing" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "billing" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "billing" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("billing")}
               >
                 <Receipt className="mr-3 h-4 w-4" />
@@ -272,7 +279,7 @@ export default function DashboardPage() {
               </Button>
               <Button
                 variant={activeTab === "community" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "community" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "community" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("community")}
               >
                 <Users className="mr-3 h-4 w-4" />
@@ -280,7 +287,7 @@ export default function DashboardPage() {
               </Button>
               <Button
                 variant={activeTab === "learning" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "learning" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "learning" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("learning")}
               >
                 <BookOpen className="mr-3 h-4 w-4" />
@@ -288,13 +295,13 @@ export default function DashboardPage() {
               </Button>
               <Button
                 variant={activeTab === "profile" ? "default" : "ghost"}
-                className={`w-full justify-start font-body ${activeTab === "profile" ? "btn-primary" : "hover:bg-muted/50"}`}
+                className={`w-full justify-start font-body ${activeTab === "profile" ? "btn-primary" : "hover:bg-green-100"}`}
                 onClick={() => setActiveTab("profile")}
               >
                 <User className="mr-3 h-4 w-4" />
                 {text.profile}
               </Button>
-              <Button variant="ghost" className="w-full justify-start hover:bg-muted/50 font-body">
+              <Button variant="ghost" className="w-full justify-start hover:bg-green-100 font-body">
                 <Settings className="mr-3 h-4 w-4" />
                 {text.settings}
               </Button>
@@ -375,6 +382,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
+              {/* Register New Domain CTA */}
               <Card className="card-glass border-2 border-dashed border-primary/40 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
                 onClick={() => setActiveTab("search")}
                 tabIndex={0}
@@ -384,6 +392,20 @@ export default function DashboardPage() {
                   <Plus className="h-10 w-10 text-primary mb-2 animate-bounce" />
                   <p className="text-lg font-heading-bold text-primary">Register New Domain</p>
                   <p className="text-sm text-muted-foreground mt-1">Find and secure your next .KE domain</p>
+                </CardContent>
+              </Card>
+
+              {/* New: Create Website CTA (opens sandbox with a default slug) */}
+              <Card
+                className="card-glass border-2 border-dashed border-accent/30 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                onClick={() => router.push("/sandbox/website")}
+                tabIndex={0}
+                aria-label="Create your own website with zero code"
+              >
+                <CardContent className="p-6 flex flex-col items-center justify-center h-full">
+                  <Globe className="h-10 w-10 text-accent mb-2 animate-pulse" />
+                  <p className="text-lg font-heading-bold text-accent">Create your own Website</p>
+                  <p className="text-sm text-muted-foreground mt-1">With zero code — launch instantly</p>
                 </CardContent>
               </Card>
             </div>
@@ -571,9 +593,18 @@ export default function DashboardPage() {
                       <div className="text-muted-foreground">No registrars found.</div>
                     ) : (
                       registrars.slice(0, 6).map((reg) => (
-                        <div key={reg._id} className="p-3 rounded-lg bg-muted flex flex-col items-center shadow-sm">
-                          <img src={reg.logoUrl || "/default-registrar.png"} alt={reg.name} className="h-8 w-8 mb-2" />
-                          <span className="font-medium">{reg.name}</span>
+                        <div key={reg._id || reg.name} className="p-3 rounded-lg bg-muted flex flex-col items-center shadow-sm">
+                          <img
+                            src={getLocalLogo(reg)}
+                            alt={reg.name}
+                            className="h-8 w-8 mb-2 object-contain"
+                            onError={(e) => {
+                              const img = e.currentTarget as HTMLImageElement
+                              img.onerror = null
+                              img.src = reg.logoUrl || "/logos/hostpinacle.webp"
+                            }}
+                          />
+                          <span className="font-medium text-center">{reg.name}</span>
                           <span className="text-xs text-muted-foreground">{reg.website}</span>
                         </div>
                       ))
