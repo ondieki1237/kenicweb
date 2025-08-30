@@ -93,34 +93,36 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="name" className="font-body-medium">
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  required
-                  className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="font-body-medium">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    required
+                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="username" className="font-body-medium">
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="johndoe"
-                  value={formData.username}
-                  onChange={(e) => handleInputChange("username", e.target.value)}
-                  required
-                  className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="font-body-medium">
+                    Username
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="johndoe"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange("username", e.target.value)}
+                    required
+                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -154,67 +156,69 @@ export default function RegisterPage() {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="font-body-medium">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    required
-                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors pr-12"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="font-body-medium">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      required
+                      className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors pr-12"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="font-body-medium">
+                    Confirm Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      required
+                      className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors pr-12"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="font-body-medium">
-                  Confirm Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    required
-                    className="h-12 bg-input/50 border-border/50 focus:bg-background transition-colors pr-12"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
+              <div className="flex items-start space-x-3 pt-2">
                 <Checkbox
                   id="terms"
                   checked={agreeToTerms}
@@ -238,14 +242,14 @@ export default function RegisterPage() {
 
               <Button
                 type="submit"
-                className="w-full h-12 btn-primary font-body-medium"
+                className="w-full h-12 btn-primary font-body-medium mt-4"
                 disabled={isLoading || !agreeToTerms}
               >
-                {isLoading ? "Registering..." : "Register"}
+                {isLoading ? "Registering..." : "Create Account"}
               </Button>
             </form>
 
-            <div className="mt-8 text-center">
+            <div className="mt-8 text-center border-t pt-6">
               <p className="text-sm text-muted-foreground font-body">
                 Already have an account?{" "}
                 <Link href="/login" className="text-primary hover:text-primary/80 transition-colors font-body-medium">

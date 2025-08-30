@@ -67,7 +67,7 @@ interface SecuritySettings {
 }
 
 export default function UserProfile() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState("profile")
   const [isEditing, setIsEditing] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
@@ -120,13 +120,39 @@ export default function UserProfile() {
   // Load profile from API when mounted or when user changes
   useEffect(() => {
     const load = async () => {
-      if (!user?.id) return
       setLoading(true)
       try {
-        // prefer /api/users/:id then fallback to /api/auth/profile
-        const res = await getUser(user.id).catch(() => null)
-        const u = res?.user ?? res ?? (await getMyProfile().catch(() => null))
+        let u: any = null
+
+        // If we have a user id from auth context, prefer fetching by id first.
+        if (user?.id) {
+          try {
+            const res = await getUser(user.id)
+            u = res?.user ?? res ?? null
+          } catch (err) {
+            // continue to try getMyProfile as fallback
+            u = null
+          }
+        }
+
+        // If no user from getUser, try getMyProfile to rebuild session from token/cookie
+        if (!u) {
+          try {
+            u = await getMyProfile()
+          } catch (err: any) {
+            // If unauthorized, optionally log the user out to force re-login
+            if (err?.message === "Unauthorized" || err?.message?.includes("401")) {
+              try { await logout?.() } catch {}
+              setLoading(false)
+              return
+            }
+            // other errors: keep u null
+            u = null
+          }
+        }
+
         if (u) {
+          // normalize field names and populate local state
           setProfile({
             firstName: u.firstName ?? u.first_name ?? "",
             lastName: u.lastName ?? u.last_name ?? "",
@@ -153,6 +179,13 @@ export default function UserProfile() {
             apiAccess: !!u.apiAccess,
           })
           setAvatarUrl(u.avatarUrl ?? u.avatar ?? null)
+
+          // persist a lightweight copy for quick restores (optional)
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("auth_user", JSON.stringify({ id: u.id ?? u._id, firstName: u.firstName ?? u.first_name, lastName: u.lastName ?? u.last_name, email: u.email }))
+            }
+          } catch {}
         }
       } catch (err) {
         console.warn("Failed to load profile", err)
@@ -161,7 +194,8 @@ export default function UserProfile() {
       }
     }
     load()
-  }, [user?.id])
+    // run when auth user id changes or logout reference changes
+  }, [user?.id, logout])
 
   const handleSaveProfile = async () => {
     if (!user?.id) return alert("Not logged in")
