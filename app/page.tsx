@@ -131,7 +131,7 @@ export default function HomePage() {
             if (s && typeof s === "object") return s.text || s.name || s.title || s.value || JSON.stringify(s)
             return String(s)
           }).filter(Boolean) || []
-          setSuggestions(Array.from(new Set(normalizedSuggestions)).slice(0, 6))
+          setSuggestions(Array.from(new Set(normalizedSuggestions)).slice(0, 6) as string[])
         } catch (suggestionError) {
           console.error("[HomePage] Error fetching suggestions:", suggestionError)
           setSuggestions([
@@ -176,7 +176,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-blue-50 to-white text-foreground transition-colors duration-300 font-sans">
+  <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-red-50 to-white text-foreground transition-colors duration-300 font-sans">
       {/* Header */}
       <header
         className={`border-b border-border sticky top-0 z-50 transition-all duration-300 ${
@@ -282,11 +282,11 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section with Enhanced Search */}
-      <section className="py-8 md:py-12 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white relative overflow-hidden">
+  <section className="py-8 md:py-12 px-4 bg-gradient-to-br from-crimson-50 via-red-50 to-white relative overflow-hidden">
         <div className="container mx-auto text-center max-w-6xl relative z-10">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight font-serif">
             <span className="block lg:inline">Find & Register Your </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-crimson-600 to-blue-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-crimson-600 to-red-600">
               Perfect .KE Domain
             </span>
           </h1>
@@ -299,14 +299,6 @@ export default function HomePage() {
                 <Alert className="bg-red-50 border-red-200">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
                   <AlertDescription className="text-red-800">{error}</AlertDescription>
-                </Alert>
-              )}
-              {!user && (
-                <Alert className="bg-blue-50 border-blue-200">
-                  <Shield className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    <strong>Login Required:</strong> Please log in to register domains.
-                  </AlertDescription>
                 </Alert>
               )}
               <div className="flex flex-col sm:flex-row gap-3">
@@ -335,7 +327,7 @@ export default function HomePage() {
                 </div>
                 <Button
                   size="lg"
-                  className="text-lg px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 hover:scale-105 transition-all duration-300 shadow-lg"
+                  className="text-lg px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-red-600 hover:from-primary/90 hover:to-red-600/90 hover:scale-105 transition-all duration-300 shadow-lg"
                   onClick={handleSearch}
                   disabled={loading}
                   aria-label="Search .KE domains"
@@ -391,7 +383,7 @@ export default function HomePage() {
                         {result.available && (
                           <Button
                             size="sm"
-                            className="bg-gradient-to-r from-primary to-blue-600"
+                            className="bg-gradient-to-r from-primary to-red-600"
                             onClick={() => handleRegisterDomain(result)}
                           >
                             <ShoppingCart className="h-4 w-4 mr-1" />
@@ -414,7 +406,7 @@ export default function HomePage() {
               <span className="font-medium">25+ Years Reliability</span>
             </div>
             <div className="flex items-center bg-white/60 backdrop-blur-sm rounded-full px-4 py-2">
-              <span className="text-blue-500 mr-2">⚡</span>
+              <span className="text-red-500 mr-2">⚡</span>
               <span className="font-medium">110,000+ Domains Managed</span>
             </div>
             <div className="flex items-center bg-white/60 backdrop-blur-sm rounded-full px-4 py-2">
@@ -424,7 +416,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-crimson-200 to-blue-200 rounded-full opacity-20 animate-pulse" />
+  <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-crimson-200 to-red-200 rounded-full opacity-20 animate-pulse" />
         <div
           className="absolute bottom-20 right-10 w-24 h-24 bg-gradient-to-br from-green-200 to-crimson-200 rounded-full opacity-20 animate-pulse"
           style={{ animationDelay: "1s" }}
@@ -438,7 +430,7 @@ export default function HomePage() {
       {/* Features Section */}
       <section
         id="features"
-        className="py-12 md:py-20 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white animate-on-scroll opacity-0 translate-y-8 transition-all duration-700"
+  className="py-12 md:py-20 px-4 bg-gradient-to-br from-crimson-50 via-red-50 to-white animate-on-scroll opacity-0 translate-y-8 transition-all duration-700"
       >
         <div className="container mx-auto">
           <div className="text-center mb-12 md:mb-16">
@@ -573,7 +565,7 @@ export default function HomePage() {
       {/* Testimonials Section */}
       <section
         id="testimonials"
-        className="py-12 md:py-20 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white animate-on-scroll opacity-0 translate-y-8 transition-all duration-700"
+  className="py-12 md:py-20 px-4 bg-gradient-to-br from-crimson-50 via-red-50 to-white animate-on-scroll opacity-0 translate-y-8 transition-all duration-700"
       >
         <div className="container mx-auto">
           <div className="text-center mb-12 md:mb-16">
@@ -650,7 +642,7 @@ export default function HomePage() {
       </section>
 
       {/* Bottom Feature Cards Section */}
-      <section className="py-8 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white border-t border-white/20 animate-on-scroll opacity-0 translate-y-8 transition-all duration-700">
+  <section className="py-8 px-4 bg-gradient-to-br from-crimson-50 via-red-50 to-white border-t border-white/20 animate-on-scroll opacity-0 translate-y-8 transition-all duration-700">
         <div className="container mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
@@ -689,7 +681,7 @@ export default function HomePage() {
       </section>
 
       {/* Trusted Agencies Section */}
-      <section className="py-12 md:py-16 px-4 bg-gradient-to-br from-crimson-50 via-blue-50 to-white border-y border-border animate-on-scroll opacity-0 translate-y-8 transition-all duration-700">
+  <section className="py-12 md:py-16 px-4 bg-gradient-to-br from-crimson-50 via-red-50 to-white border-y border-border animate-on-scroll opacity-0 translate-y-8 transition-all duration-700">
         <div className="container mx-auto">
           <div className="text-center mb-8 md:mb-12">
             <h2 className="text-xl md:text-2xl font-semibold mb-2 text-muted-foreground">
@@ -722,7 +714,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-br from-crimson-50 via-blue-50 to-white border-t border-border py-10 md:py-16 px-4">
+  <footer className="bg-gradient-to-br from-crimson-50 via-red-50 to-white border-t border-border py-10 md:py-16 px-4">
         <div className="container mx-auto">
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             <div className="sm:col-span-2 md:col-span-1">
