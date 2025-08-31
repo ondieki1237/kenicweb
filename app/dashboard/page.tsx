@@ -230,7 +230,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-100 dark:bg-neutral transition-colors duration-300">
         <header className="bg-white dark:bg-neutral/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto flex items-center justify-between px-3 sm:px-4 py-3">
+          <div className="flex items-center justify-between px-3 sm:px-8 py-3">
             <div className="flex items-center space-x-3">
               <Button
                 variant="ghost"
@@ -363,7 +363,7 @@ export default function DashboardPage() {
           )}
         </header>
 
-        <div className="flex max-w-7xl mx-auto w-full">
+  <div className="flex w-full">
           <aside
             className={`${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -440,7 +440,7 @@ export default function DashboardPage() {
             </nav>
           </aside>
 
-          <main className="flex-1 p-3 sm:p-4 lg:p-6">
+          <main className="flex-1 p-3 sm:p-6 lg:p-10">
             <div className="mb-6 animate-fade-in">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading-bold text-gray-800 dark:text-gray-100 mb-1">
                 {welcomeMessage}
@@ -605,7 +605,7 @@ export default function DashboardPage() {
                         ].map(({ label, icon: Icon, action }, index) => (
                           <Button
                             key={index}
-                            className="w-full justify-start btn-glass font-body text-gray-700 dark:text-gray-200"
+                            className="w-full justify-start btn-glass font-body text-white"
                             onClick={action}
                           >
                             <Icon className="mr-3 h-4 w-4" />

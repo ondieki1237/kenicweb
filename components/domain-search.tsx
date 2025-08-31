@@ -215,7 +215,13 @@ const WhoisModal = ({ whoisData, setShowWhois }: { whoisData: any; setShowWhois:
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Registrant</h4>
-              <p className="text-foreground font-medium">{whoisData.registrant}</p>
+              <p className="text-foreground font-medium">
+                {typeof whoisData.registrant === "object"
+                  ? Object.entries(whoisData.registrant)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join(", ")
+                  : whoisData.registrant}
+              </p>
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Registration Date</h4>
