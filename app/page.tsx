@@ -1,17 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Search, Shield, Smartphone, Globe, CheckCircle, Star, Users, Building2, Menu, X, AlertTriangle, ShoppingCart } from "lucide-react"
+import { Search, Shield, Smartphone, Globe, CheckCircle, Star, Users, Building2, Menu, X, AlertTriangle, ShoppingCart, Zap } from "lucide-react"
 import FlowingHeroAnimation from "@/components/flowing-hero-animation"
 import Link from "next/link"
 import { domainApi } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
+import BusinessAISuggestion from "@/components/business-ai-suggestion";
 
 interface DomainResult {
   name: string
@@ -46,6 +47,7 @@ export default function HomePage() {
   const [domainsLoading, setDomainsLoading] = useState(false)
   const [domainsError, setDomainsError] = useState<string | null>(null)
   const router = useRouter()
+  const aiSectionRef = useRef<HTMLDivElement>(null);
 
   const extensions = [
     { name: ".co.ke", price: 1200, description: "Commercial entities" },
@@ -204,15 +206,6 @@ export default function HomePage() {
       setError("Error redirecting to registration. Please try again.")
     }
   }
-
-  // Calculate dashboard stats from real data
-  const totalDomains = myDomains.length
-  const expiringDomains = myDomains.filter(
-    (d) =>
-      (d.status === "expiring") ||
-      (typeof d.daysUntilExpiry === "number" && d.daysUntilExpiry <= 30)
-  ).length
-  const activeServices = myDomains.filter((d) => d.status === "active").length
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-red-50 to-white text-foreground transition-colors duration-300 font-sans">
@@ -465,64 +458,6 @@ export default function HomePage() {
           style={{ animationDelay: "2s" }}
         />
       </section>
-
-      {/* Stats Section - New Addition */}
-      <section className="max-w-3xl mx-auto my-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="py-6 text-center">
-            <div className="text-2xl font-bold">{totalDomains}</div>
-            <div className="text-muted-foreground">Total Domains</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-6 text-center">
-            <div className="text-2xl font-bold text-red-600">{expiringDomains}</div>
-            <div className="text-muted-foreground">Expiring Soon</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-6 text-center">
-            <div className="text-2xl font-bold text-green-600">{activeServices}</div>
-            <div className="text-muted-foreground">Active Services</div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Quick stats - New Addition */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Quick stats</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-muted-foreground">Domains</span>
-              <span className="text-lg font-bold">{myDomains.length}</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-muted-foreground">Expiring</span>
-              <span className="text-lg font-bold text-red-600">
-                {myDomains.filter(
-                  (d) =>
-                    (d.status === "expiring") ||
-                    (typeof d.daysUntilExpiry === "number" && d.daysUntilExpiry <= 30)
-                ).length}
-              </span>
-            </div>
-            <div className="flex flex-col items-center col-span-2">
-              <span className="text-xs text-muted-foreground">Active Services</span>
-              <span className="text-lg font-bold text-green-600">
-                {myDomains.filter((d) => d.status === "active").length}
-              </span>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>API Status:</span>
-            <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-            <span>online</span>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Features Section */}
       <section
@@ -891,6 +826,43 @@ export default function HomePage() {
           Find Your .KE Domain
         </Button>
       </div>
+
+      {/* AI Domain Registration Section - New Addition */}
+      <section className="max-w-3xl mx-auto my-12" ref={aiSectionRef}>
+        <Card className="border-2 border-dashed border-primary/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl font-bold text-primary">
+              <Zap className="h-6 w-6 text-primary" />
+              Register New Domain (AI)
+            </CardTitle>
+            <CardDescription>
+              Find and secure your next .KE domain with AI-powered business suggestions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BusinessAISuggestion
+              onSelectDomain={(domain, extensions) => {
+                // Prefill the domain and extension, then trigger registration flow
+                setDomain(domain);
+                setExtension(extensions?.[0] || ".co.ke");
+                handleSearch();
+              }}
+              onWhoisLookup={(domain) => {
+                window.open(`https://whois.kenic.or.ke/?domain=${encodeURIComponent(domain)}`, "_blank");
+              }}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <Button
+        size="lg"
+        className="mt-4 bg-gradient-to-r from-primary to-red-600 text-white shadow-lg hover:scale-105 transition-all"
+        onClick={() => aiSectionRef.current?.scrollIntoView({ behavior: "smooth" })}
+      >
+        <Zap className="h-5 w-5 mr-2" />
+        AI Suggestions
+      </Button>
     </div>
   )
 }

@@ -21,9 +21,15 @@ interface DomainResult {
   registrar: string
 }
 
-export default function DomainSearch() {
+export default function DomainSearch({
+  prefillDomain,
+  onClearPrefill,
+}: {
+  prefillDomain?: string | null;
+  onClearPrefill?: () => void;
+}) {
   const { user } = useAuth()
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState(prefillDomain || "")
   const [selectedExtensions, setSelectedExtensions] = useState([".co.ke"])
   const [searchResults, setSearchResults] = useState<DomainResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -120,6 +126,13 @@ export default function DomainSearch() {
       setShowWhois(false)
     }
   }
+
+  useEffect(() => {
+    if (prefillDomain) {
+      setSearchQuery(prefillDomain);
+      onClearPrefill?.();
+    }
+  }, [prefillDomain]);
 
   if (showCheckout && selectedDomain) {
     return (

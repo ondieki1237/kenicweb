@@ -40,6 +40,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { domainApi, billingApi } from "@/lib/api";
 import { Pie } from "react-chartjs-2";
 import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
+import BusinessAISuggestion from "@/components/business-ai-suggestion";
+import { Zap } from "lucide-react";
 
 // Register Chart.js components
 Chart.register(ArcElement, Tooltip, Legend);
@@ -136,6 +138,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [registrars, setRegistrars] = useState<any[]>([]);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -147,7 +151,6 @@ export default function DashboardPage() {
       if (!user?.email) return;
       try {
         setLoading(true);
-        // Fetch domains with x-user-email header
         const domainsRes = await fetch("https://kenic-hackathon.onrender.com/my-domains", {
           method: "GET",
           headers: {
@@ -155,7 +158,7 @@ export default function DashboardPage() {
           },
         });
         const domainsData = await domainsRes.json();
-        console.log("Fetched domains:", domainsData); // <-- Add this line
+        setUserDomains(domainsData.domains || []);
 
         // Fetch activity and billing as before
         const [activityRes, billingRes] = await Promise.all([
@@ -163,7 +166,6 @@ export default function DashboardPage() {
           billingApi.getBillingSummary(),
         ]);
 
-        setUserDomains(domainsData.domains || []);
         setRecentActivity(activityRes.activities || []);
         setBillingSummary(
           billingRes.summary || {
@@ -530,11 +532,59 @@ export default function DashboardPage() {
               >
                 <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center h-full">
                   <Plus className="h-7 w-7 text-green-500 mb-2 animate-bounce" />
-                  <p className="text-lg sm:text-xl font-heading-bold text-green-500 dark:text-green-400">Register New Domain</p>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Find and secure your next .KE domain</p>
+                  <p className="text-lg sm:text-xl font-heading-bold text-green-500 dark:text-green-400">
+                    Register New Domain
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Find and secure your next .KE domain
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* AI Suggestions card */}
+              <Card
+                className="card-glass border-2 border-dashed border-red-500/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer col-span-2 sm:col-span-1 lg:col-span-1"
+                onClick={() => setShowAISuggestions((v) => !v)}
+              >
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center h-full">
+                  <Zap className="h-7 w-7 text-red-500 mb-2 animate-bounce" />
+                  <p className="text-lg sm:text-xl font-heading-bold text-red-500 dark:text-red-400">
+                    AI Suggestions
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Let AI suggest the best .KE domain for your business
+                  </p>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Show the AI suggestion section when toggled */}
+            {showAISuggestions && (
+              <div className="max-w-2xl mx-auto mb-8">
+                <Card className="border-2 border-dashed border-red-500/40 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl font-bold text-red-500">
+                      <Zap className="h-6 w-6 text-red-500" />
+                      AI-Powered Domain Suggestions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <BusinessAISuggestion
+                      onSelectDomain={(domain, extensions) => {
+                        setSelectedDomain(domain); // Set the selected domain
+                        setActiveTab("search");    // Switch to the search tab
+                      }}
+                      onWhoisLookup={(domain) => {
+                        window.open(
+                          `https://whois.kenic.or.ke/?domain=${encodeURIComponent(domain)}`,
+                          "_blank"
+                        );
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {activeTab === "overview" && (
               <>
