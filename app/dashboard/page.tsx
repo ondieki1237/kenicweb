@@ -71,6 +71,29 @@ interface BillingSummary {
   monthlySpend: number;
 }
 
+function useUserDomains(userEmail?: string) {
+  const [domains, setDomains] = useState<UserDomain[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userEmail) return;
+    setLoading(true);
+    fetch("https://kenic-hackathon.onrender.com/my-domains", {
+      method: "GET",
+      headers: {
+        "x-user-email": userEmail,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setDomains(data.domains || []))
+      .catch((err) => setError("Failed to fetch domains"))
+      .finally(() => setLoading(false));
+  }, [userEmail]);
+
+  return { domains, loading, error };
+}
+
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -121,16 +144,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!user) return;
+      if (!user?.email) return;
       try {
         setLoading(true);
-        const [domainsRes, activityRes, billingRes] = await Promise.all([
-          domainApi.getUserDomains(),
+        // Fetch domains with x-user-email header
+        const domainsRes = await fetch("https://kenic-hackathon.onrender.com/my-domains", {
+          method: "GET",
+          headers: {
+            "x-user-email": user.email,
+          },
+        });
+        const domainsData = await domainsRes.json();
+        console.log("Fetched domains:", domainsData); // <-- Add this line
+
+        // Fetch activity and billing as before
+        const [activityRes, billingRes] = await Promise.all([
           domainApi.getUserActivity(),
           billingApi.getBillingSummary(),
         ]);
 
-        setUserDomains(domainsRes.domains || []);
+        setUserDomains(domainsData.domains || []);
         setRecentActivity(activityRes.activities || []);
         setBillingSummary(
           billingRes.summary || {

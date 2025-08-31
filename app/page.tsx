@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,17 @@ interface DomainResult {
   registrar: string
 }
 
+interface UserDomain {
+  _id: string
+  domain: string
+  prefix: string
+  extension: string
+  contact: string
+  user: string
+  createdAt?: string
+  [key: string]: any
+}
+
 export default function HomePage() {
   const { user } = useAuth()
   const [domain, setDomain] = useState("")
@@ -31,6 +42,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [myDomains, setMyDomains] = useState<UserDomain[]>([])
+  const [domainsLoading, setDomainsLoading] = useState(false)
+  const [domainsError, setDomainsError] = useState<string | null>(null)
   const router = useRouter()
 
   const extensions = [
@@ -73,6 +87,22 @@ export default function HomePage() {
       window.removeEventListener("scroll", handleScroll)
     }
   }, [])
+
+  useEffect(() => {
+    if (!user?.email) return
+    setDomainsLoading(true)
+    setDomainsError(null)
+    fetch("https://kenic-hackathon.onrender.com/my-domains", {
+      method: "GET",
+      headers: {
+        "x-user-email": user.email,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setMyDomains(data.domains || []))
+      .catch((err) => setDomainsError("Failed to fetch your domains"))
+      .finally(() => setDomainsLoading(false))
+  }, [user])
 
   const handleSearch = async () => {
     if (!domain.trim()) {
@@ -174,6 +204,15 @@ export default function HomePage() {
       setError("Error redirecting to registration. Please try again.")
     }
   }
+
+  // Calculate dashboard stats from real data
+  const totalDomains = myDomains.length
+  const expiringDomains = myDomains.filter(
+    (d) =>
+      (d.status === "expiring") ||
+      (typeof d.daysUntilExpiry === "number" && d.daysUntilExpiry <= 30)
+  ).length
+  const activeServices = myDomains.filter((d) => d.status === "active").length
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-crimson-50 via-red-50 to-white text-foreground transition-colors duration-300 font-sans">
@@ -426,6 +465,64 @@ export default function HomePage() {
           style={{ animationDelay: "2s" }}
         />
       </section>
+
+      {/* Stats Section - New Addition */}
+      <section className="max-w-3xl mx-auto my-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="py-6 text-center">
+            <div className="text-2xl font-bold">{totalDomains}</div>
+            <div className="text-muted-foreground">Total Domains</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-6 text-center">
+            <div className="text-2xl font-bold text-red-600">{expiringDomains}</div>
+            <div className="text-muted-foreground">Expiring Soon</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-6 text-center">
+            <div className="text-2xl font-bold text-green-600">{activeServices}</div>
+            <div className="text-muted-foreground">Active Services</div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Quick stats - New Addition */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold">Quick stats</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-muted-foreground">Domains</span>
+              <span className="text-lg font-bold">{myDomains.length}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-muted-foreground">Expiring</span>
+              <span className="text-lg font-bold text-red-600">
+                {myDomains.filter(
+                  (d) =>
+                    (d.status === "expiring") ||
+                    (typeof d.daysUntilExpiry === "number" && d.daysUntilExpiry <= 30)
+                ).length}
+              </span>
+            </div>
+            <div className="flex flex-col items-center col-span-2">
+              <span className="text-xs text-muted-foreground">Active Services</span>
+              <span className="text-lg font-bold text-green-600">
+                {myDomains.filter((d) => d.status === "active").length}
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <span>API Status:</span>
+            <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+            <span>online</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Features Section */}
       <section

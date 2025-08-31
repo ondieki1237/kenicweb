@@ -47,48 +47,33 @@ export default function DomainManagement() {
   }, [user])
 
   const loadUserDomains = async () => {
-    if (!user) return
+    if (!user?.email) return
 
     setLoading(true)
     setError(null)
 
     try {
-      // For now, using mock data until backend endpoint is available
-      const mockDomains: Domain[] = [
-        {
-          id: "1",
-          name: "mybusiness",
-          extension: ".co.ke",
-          status: "active",
-          expiryDate: "2025-12-15",
-          daysUntilExpiry: 120,
-          autoRenew: true,
-          registrar: "Safaricom Ltd",
-          nameServers: ["ns1.safaricom.co.ke", "ns2.safaricom.co.ke"],
-          dnsRecords: [
-            { type: "A", name: "@", value: "192.168.1.1", ttl: 3600 },
-            { type: "CNAME", name: "www", value: "mybusiness.co.ke", ttl: 3600 },
-            { type: "MX", name: "@", value: "mail.mybusiness.co.ke", ttl: 3600 },
-          ],
+      const res = await fetch("https://kenic-hackathon.onrender.com/my-domains", {
+        method: "GET",
+        headers: {
+          "x-user-email": user.email,
         },
-        {
-          id: "2",
-          name: "myshop",
-          extension: ".or.ke",
-          status: "expiring",
-          expiryDate: "2025-02-28",
-          daysUntilExpiry: 15,
-          autoRenew: false,
-          registrar: "KCB Bank",
-          nameServers: ["ns1.kcb.co.ke", "ns2.kcb.co.ke"],
-          dnsRecords: [
-            { type: "A", name: "@", value: "192.168.1.2", ttl: 3600 },
-            { type: "CNAME", name: "www", value: "myshop.or.ke", ttl: 3600 },
-          ],
-        },
-      ]
-
-      setDomains(mockDomains)
+      })
+      const data = await res.json()
+      // Map API data to local Domain type
+      const domains: Domain[] = (data.domains || []).map((d: any) => ({
+        id: d._id || d.id || d.domain, // fallback if _id is missing
+        name: d.prefix || d.name || d.domain?.split(".")[0] || "",
+        extension: d.extension || ("." + (d.domain?.split(".").slice(1).join(".") || "")),
+        status: d.status || "active",
+        expiryDate: d.expiryDate || "",
+        daysUntilExpiry: d.daysUntilExpiry || 365,
+        autoRenew: d.autoRenew ?? false,
+        registrar: d.registrar || "N/A",
+        nameServers: d.nameServers || [],
+        dnsRecords: d.dnsRecords || [],
+      }))
+      setDomains(domains)
     } catch (err: any) {
       setError(err.message || "Failed to load domains")
     } finally {

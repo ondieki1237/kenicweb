@@ -42,27 +42,26 @@ export default function PaymentCheckout({
   const { user } = useAuth()
 
   // normalize Kenyan phone numbers to 2547XXXXXXXX format (no +)
-const normalizeKenyaPhone = (input: string) => {
-  if (!input) return ""
+  const normalizeKenyaPhone = (input: string) => {
+    if (!input) return ""
 
-  // remove all non-digits
-  let s = input.replace(/\D/g, "")
+    // remove all non-digits
+    let s = input.replace(/\D/g, "")
 
-  // Handle +254... or 254...
-  if (s.startsWith("254") && s.length === 12) return s
-  if (s.startsWith("254") && s.length > 12) return s.slice(0, 12)
+    // Handle +254... or 254...
+    if (s.startsWith("254") && s.length === 12) return s
+    if (s.startsWith("254") && s.length > 12) return s.slice(0, 12)
 
-  // Handle leading 0 (07xxxxxxxx or 01xxxxxxxx)
-  if (s.startsWith("0") && s.length === 10) return "254" + s.slice(1)
+    // Handle leading 0 (07xxxxxxxx or 01xxxxxxxx)
+    if (s.startsWith("0") && s.length === 10) return "254" + s.slice(1)
 
-  // Handle case where someone enters without 0 (7xxxxxxxx or 1xxxxxxxx)
-  if (s.length === 9 && (s.startsWith("7") || s.startsWith("1"))) {
-    return "254" + s
+    // Handle case where someone enters without 0 (7xxxxxxxx or 1xxxxxxxx)
+    if (s.length === 9 && (s.startsWith("7") || s.startsWith("1"))) {
+      return "254" + s
+    }
+
+    return s // fallback
   }
-
-  return s // fallback
-}
-
 
   const isValidKenyaPhone = (s: string) => /^2547\d{8}$/.test(s)
 
@@ -110,15 +109,30 @@ const normalizeKenyaPhone = (input: string) => {
           sessionId,
           userId: user.id,
           amount: Number(amount),
-          phone: normalized, // backend expects 'phone'
+          phone: normalized,
           callbackUrl:
             process.env.NEXT_PUBLIC_MPESA_CALLBACK_URL ||
             "https://mili-hack.onrender.com/api/payment/mpesa/callback",
           metadata: { domain, type },
         }
 
-        const data = await initiateMpesaPayment(payload)
-        // success -> instruct user to complete on phone; backend will call callback webhook
+        await initiateMpesaPayment(payload)
+
+        // After payment, save the domain to the database
+        const [prefix, ...extParts] = (domain || "").split(".")
+        const extension = extParts.length ? "." + extParts.join(".") : ""
+        await fetch("https://kenic-hackathon.onrender.com/save-domain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            domain,
+            prefix,
+            extension,
+            contact: user.contact || "C123",
+            user: user.email,
+          }),
+        })
+
         setIsProcessing(false)
         setPaymentComplete(true)
         setTimeout(() => onSuccess?.(), 1500)
@@ -133,8 +147,25 @@ const normalizeKenyaPhone = (input: string) => {
 
     // Simulate other methods (card/bank)
     setIsProcessing(true)
-    // Simulate payment processing
     await new Promise((resolve) => setTimeout(resolve, 3000))
+    // After payment, save the domain to the database
+    try {
+      const [prefix, ...extParts] = (domain || "").split(".")
+      const extension = extParts.length ? "." + extParts.join(".") : ""
+      await fetch("https://kenic-hack.onrender.com/save-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain,
+          prefix,
+          extension,
+          contact: user?.contact || "C123",
+          user: user?.email,
+        }),
+      })
+    } catch (err) {
+      alert("Payment succeeded but saving domain failed.")
+    }
     setIsProcessing(false)
     setPaymentComplete(true)
     setTimeout(() => {
