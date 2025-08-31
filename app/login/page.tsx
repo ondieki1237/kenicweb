@@ -143,15 +143,6 @@ export default function LoginPage() {
               <Button type="submit" className="w-full h-12 btn-primary font-body-medium" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-
-              <Button
-                type="button"
-                className="w-full h-12 btn-glass font-body-medium"
-                onClick={handleBypassToDashboard}
-              >
-                <Globe className="h-4 w-4 mr-2" />
-                Quick Access to Dashboard (Demo)
-              </Button>
             </form>
 
             <div className="mt-8 text-center">

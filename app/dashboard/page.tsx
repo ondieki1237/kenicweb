@@ -241,7 +241,7 @@ export default function DashboardPage() {
               >
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
-              <Link href="/" className="flex items-center space-x-2 hover:opacity-90 transition-opacity">
+              <Link href="/dashboard" className="flex items-center space-x-2 hover:opacity-90 transition-opacity">
                 <img src="/kenic-official-logo.png" alt="KeNIC Logo" className="h-7 w-auto sm:h-8" />
                 <span className="text-lg font-heading-bold hidden sm:inline-block dark:text-gray-100">KeNIC</span>
               </Link>
@@ -293,7 +293,7 @@ export default function DashboardPage() {
                 title={text.backToHome}
                 className="hover:bg-green-100 dark:hover:bg-green-900/50"
               >
-                <Link href="/">
+                <Link href="/dashboard">
                   <Home className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                 </Link>
               </Button>
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                 className="w-full justify-start hover:bg-green-100 dark:hover:bg-green-900/50 font-body text-gray-700 dark:text-gray-200"
                 asChild
               >
-                <Link href="/">
+                <Link href="/dashboard">
                   <div className="flex items-center"><Home className="mr-3 h-4 w-4" />{text.backToHome}</div>
                 </Link>
               </Button>
@@ -393,9 +393,12 @@ export default function DashboardPage() {
                 <Button
                   key={tab}
                   variant={activeTab === tab ? "default" : "ghost"}
-                  className={`w-full justify-start font-body text-gray-700 dark:text-gray-200 ${
-                    activeTab === tab ? "btn-primary" : "hover:bg-green-100 dark:hover:bg-green-900/50"
-                  }`}
+                  className={`
+                    w-full justify-start font-body
+                    ${activeTab === tab
+                      ? "bg-black text-white hover:bg-black"
+                      : "text-black hover:text-black hover:bg-gray-100 dark:hover:bg-green-900/50"}
+                  `}
                   onClick={() => {
                     setActiveTab(tab);
                     setSidebarOpen(false);
@@ -757,11 +760,14 @@ export default function DashboardPage() {
                     setActiveTab(tab);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
-                  className={`flex-1 flex flex-col items-center justify-center text-xs sm:text-sm py-2 rounded-md ${
-                    activeTab === tab ? "bg-black/5 dark:bg-white/5" : "hover:bg-gray-50 dark:hover:bg-neutral/80"
-                  }`}
+                  className={`
+                    flex-1 flex flex-col items-center justify-center text-xs sm:text-sm py-2 rounded-md
+                    ${activeTab === tab
+                      ? "bg-black text-white"
+                      : "text-black hover:text-black hover:bg-gray-50 dark:hover:bg-neutral/80"}
+                  `}
                 >
-                  <Icon className={`h-5 w-5 ${activeTab === tab ? "text-black dark:text-white" : "text-gray-600 dark:text-gray-300"}`} />
+                  <Icon className={`h-5 w-5 ${activeTab === tab ? "text-white" : "text-black"}`} />
                   <span className="mt-1">{label}</span>
                 </button>
               ))}
