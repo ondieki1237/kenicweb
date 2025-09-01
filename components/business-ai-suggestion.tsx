@@ -10,10 +10,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { domainApi } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 
-// Fallback for motion.div
 const MotionDiv = motion.div;
 
-// Interface for AI Suggestion
 interface AISuggestion {
   domain: string;
   available: boolean;
@@ -86,14 +84,19 @@ export default function BusinessAISuggestion({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 max-w-3xl mx-auto px-2 sm:px-6 py-8 bg-white/80 dark:bg-neutral-900 rounded-2xl shadow-xl border border-border">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-accent rounded-[var(--radius)]">
-          <Lightbulb className="h-5 w-5 text-primary" />
+      <div className="flex items-center gap-3 mb-2">
+        <div className="p-3 bg-primary/10 rounded-full">
+          <Lightbulb className="h-6 w-6 text-primary" />
         </div>
-        <h4 className="font-bold text-lg text-foreground">AI-Driven Domain Suggestions</h4>
+        <h4 className="font-bold text-2xl text-foreground">
+          AI-Driven Domain Suggestions
+        </h4>
       </div>
+      <p className="text-muted-foreground text-base mb-2">
+        Describe your business and let AI suggest the best .KE domains for you.
+      </p>
 
       {/* Error Alert */}
       <AnimatePresence>
@@ -104,7 +107,7 @@ export default function BusinessAISuggestion({
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <Alert className="bg-destructive/10 border-destructive rounded-[var(--radius)] shadow-sm">
+            <Alert className="bg-destructive/10 border-destructive rounded-[var(--radius)] shadow-sm mb-4">
               <X className="h-5 w-5 text-destructive" />
               <AlertDescription className="text-destructive font-medium">{error}</AlertDescription>
             </Alert>
@@ -113,18 +116,18 @@ export default function BusinessAISuggestion({
       </AnimatePresence>
 
       {/* Input and Button */}
-      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+      <div className="flex flex-col sm:flex-row items-center gap-3">
         <Input
           placeholder="Describe your business (e.g., Fresh farm produce supplier)"
           value={businessDescription}
           onChange={(e) => setBusinessDescription(e.target.value)}
-          className="flex-1 text-base border-input focus:ring-ring focus:border-primary rounded-[var(--radius)] h-12"
+          className="flex-1 text-base border-input focus:ring-ring focus:border-primary rounded-[var(--radius)] h-12 bg-white dark:bg-neutral-800"
           disabled={!user}
         />
         <Button
           onClick={handleBusinessAISearch}
           disabled={!businessDescription.trim() || isBizLoading || !user}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 h-12 px-6 rounded-[var(--radius)]"
+          className="bg-gradient-to-r from-primary to-red-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 px-8 rounded-[var(--radius)] text-base font-semibold"
         >
           {isBizLoading ? (
             <>
@@ -148,7 +151,7 @@ export default function BusinessAISuggestion({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"
           >
             {bizSuggestions.map((s, idx) => {
               const price =
@@ -157,13 +160,13 @@ export default function BusinessAISuggestion({
               return (
                 <div
                   key={`biz-${idx}-${s.domain}`}
-                  className="border border-border rounded-[var(--radius)] p-4 flex items-center justify-between bg-card shadow-sm hover:shadow-md transition-all duration-300"
+                  className="border border-border rounded-xl p-5 flex flex-col justify-between bg-card shadow-md hover:shadow-xl transition-all duration-300"
                 >
                   <div>
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-foreground">{s.domain}</h3>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className="font-semibold text-lg text-foreground">{s.domain}</h3>
                       {s.available ? (
-                        <Badge className="bg-chart-4 text-foreground border-chart-4 font-medium">
+                        <Badge className="bg-green-100 text-green-700 border-green-200 font-medium">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Available
                         </Badge>
@@ -174,11 +177,18 @@ export default function BusinessAISuggestion({
                         </Badge>
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {price ? `KSh ${price} @ ${registrar}` : "Pricing unavailable"}
+                    <div className="text-sm text-muted-foreground mb-2">
+                      {price ? (
+                        <>
+                          <span className="font-semibold text-primary">KSh {price}</span>
+                          <span className="ml-2"> @ {registrar}</span>
+                        </>
+                      ) : (
+                        "Pricing unavailable"
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 mt-4">
                     {s.available && (
                       <Button
                         size="sm"
